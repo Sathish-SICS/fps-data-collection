@@ -365,15 +365,8 @@ const CONFIG = {
   SHEET_ID: "1jrC_dfH5pnKMFrkSbn2GY0CqcsXqfhTrZzckbqkV4Eg",
   API_KEY:  "AIzaSyD5sjGuEqmO-pT-CW0k3IvFkWRodXZFwGo",
   SHEET_NAME: "FPS_Data",
-  SCRIPT_URL: "https://script.google.com/macros/library/d/1KeJre5a-thx4aDJ42-V61dg7jIZRqd83BlbuOVtHJ4w62gwBoPq2WEl8/4",
-
-  // Session duration in minutes for block staff
-  SESSION_MINUTES: 120, // Block staff: configurable per login // Change to whatever you want
-
-  // USERS — add/remove as needed
-  // role: "master" = no session limit, can see audit log
-  // role: "editor" = session limited, can edit their block's data only
-  // role: "viewer" = can only view, cannot edit
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycby84wmWpECuWIuMKl3hDIn8PXGs9Hli8Rqe76zlUSF5c-JMmJ5EykoDzobOHRA_syjMng/exec",
+  SESSION_MINUTES: 120,
   USERS: {
     "sathish": { password: "Sathish@DR#2026", role: "master", label: "Sathish (Deputy Registrar)", block: null },
     "anakavoor": { password: "Anak@2026#fps", role: "editor", label: "Anakavoor Block", block: "அனக்காவூர்" },
@@ -396,33 +389,10 @@ const CONFIG = {
     "polur": { password: "Polu@2026#fps", role: "editor", label: "Polur Block", block: "போளுர்" },
     "vandavasi": { password: "Vanda@2026#fps", role: "editor", label: "Vandavasi Block", block: "வந்தவாசி" },
     "vembakkam1": { password: "Vemb1@2026#fps", role: "editor", label: "Vembakkam 1 Block", block: "வெம்பாக்கம்  1" },
-    "vembakkam2": { password: "Vemb2@2026#fps", role: "editor", label: "Vembakkam 2 Block", block: "வெம்பாக்கம்  2" },
-  },
-
-    // BLOCK STAFF — 21 blocks
-    "anakavoor":    { password: "PASS_ANAKAVOOR",    role: "editor", label: "Anakavoor Block",      block: "அனக்காவூர்" },
-    "arani_east":   { password: "PASS_ARANI_EAST",   role: "editor", label: "Arani East Block",     block: "ஆரணி  கிழக்கு" },
-    "arani_west":   { password: "PASS_ARANI_WEST",   role: "editor", label: "Arani West Block",     block: "ஆரணி மேற்கு" },
-    "kalasapakkam": { password: "PASS_KALASAPAKKAM", role: "editor", label: "Kalasapakkam Block",   block: "கலசபாக்கம்" },
-    "kilpennathur": { password: "PASS_KILPENNATHUR", role: "editor", label: "Kilpennathur Block",   block: "கீழ்ப்பென்னாத்துர்" },
-    "chengam":      { password: "PASS_CHENGAM",      role: "editor", label: "Chengam Block",        block: "செங்கம்" },
-    "cheyyar":      { password: "PASS_CHEYYAR",      role: "editor", label: "Cheyyar Block",        block: "செய்யார்" },
-    "chetpet":      { password: "PASS_CHETPET",      role: "editor", label: "Chetpet Block",        block: "சேத்துப்பட்டு" },
-    "jamunamarathur":{ password: "PASS_JAMUNA",      role: "editor", label: "Jamunamarathur Block", block: "ஜமுனாமரத்துர்" },
-    "thandrampet":  { password: "PASS_THANDRAMPET",  role: "editor", label: "Thandrampet Block",    block: "தண்டராம்பட்டு" },
-    "tvmalai1":     { password: "PASS_TVM1",         role: "editor", label: "Tiruvannamalai 1",     block: "திருவண்ணாமலை 1" },
-    "tvmalai2":     { password: "PASS_TVM2",         role: "editor", label: "Tiruvannamalai 2",     block: "திருவண்ணாமலை 2" },
-    "tvmalai_hq":   { password: "PASS_TVMHQ",        role: "editor", label: "Tiruvannamalai HQ",    block: "திருவண்ணாமலை HQ" },
-    "thurinjapuram":{ password: "PASS_THURINJA",     role: "editor", label: "Thurinjapuram Block",  block: "துரிஞ்சாபுரம்" },
-    "thellar":      { password: "PASS_THELLAR",      role: "editor", label: "Thellar Block",        block: "தெள்ளார்" },
-    "pudhupalayam": { password: "PASS_PUDHU",        role: "editor", label: "Pudhupalayam Block",   block: "புதுப்பாளையம்" },
-    "pernamallur":  { password: "PASS_PERNA",        role: "editor", label: "Pernamallur Block",    block: "பெரணமல்லூர்" },
-    "polur":        { password: "PASS_POLUR",        role: "editor", label: "Polur Block",          block: "போளுர்" },
-    "vandavasi":    { password: "PASS_VANDAVASI",    role: "editor", label: "Vandavasi Block",      block: "வந்தவாசி" },
-    "vembakkam1":   { password: "PASS_VEMB1",        role: "editor", label: "Vembakkam 1 Block",    block: "வெம்பாக்கம்  1" },
-    "vembakkam2":   { password: "PASS_VEMB2",        role: "editor", label: "Vembakkam 2 Block",    block: "வெம்பாக்கம்  2" },
+    "vembakkam2": { password: "Vemb2@2026#fps", role: "editor", label: "Vembakkam 2 Block", block: "வெம்பாக்கம்  2" }
   }
 };
+
 // ============================================================
 
 let allData = [], filteredData = [], auditLog = [];
