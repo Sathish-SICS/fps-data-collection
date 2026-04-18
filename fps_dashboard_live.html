@@ -253,25 +253,93 @@ tr:last-child td{border-bottom:none}
 
     <!-- STATS (hidden for editors who see only their block) -->
     <div id="stats-section">
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">மொத்த கடைகள்</div><div class="stat-value c-blue" id="s-total">—</div><div class="stat-sub">சேகரிக்கப்பட்டவை</div></div>
-        <div class="stat-card"><div class="stat-label">முழுநேரம்</div><div class="stat-value c-green" id="s-full">—</div><div class="stat-sub" id="s-full-pct"></div></div>
-        <div class="stat-card"><div class="stat-label">பகுதிநேரம்</div><div class="stat-value c-amber" id="s-part">—</div><div class="stat-sub" id="s-part-pct"></div></div>
-        <div class="stat-card"><div class="stat-label">PoS உள்ளது</div><div class="stat-value c-teal" id="s-pos">—</div><div class="stat-sub" id="s-pos-pct"></div></div>
-        <div class="stat-card"><div class="stat-label">PoS இல்லை</div><div class="stat-value c-red" id="s-nopos">—</div><div class="stat-sub" id="s-nopos-pct"></div></div>
-        <div class="stat-card"><div class="stat-label">மொத்த அட்டைகள்</div><div class="stat-value c-purple" id="s-cards">—</div></div>
-        <div class="stat-card"><div class="stat-label">நகர்புறம்</div><div class="stat-value c-blue" id="s-urban">—</div><div class="stat-sub" id="s-urban-pct"></div></div>
-        <div class="stat-card"><div class="stat-label">கிராமபுறம்</div><div class="stat-value c-green" id="s-rural">—</div><div class="stat-sub" id="s-rural-pct"></div></div>
+      <!-- Total -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="stat-card" style="flex:1;min-width:140px">
+          <div class="stat-label">மொத்த கடைகள்</div>
+          <div class="stat-value c-blue" id="s-total">—</div>
+          <div class="stat-sub">சேகரிக்கப்பட்டவை</div>
+        </div>
+        <div class="stat-card" style="flex:1;min-width:140px">
+          <div class="stat-label">மொத்த அட்டைகள்</div>
+          <div class="stat-value c-purple" id="s-cards">—</div>
+          <div class="stat-sub">குடும்பங்கள்</div>
+        </div>
+      </div>
+
+      <!-- Grouped boxes row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px">
+
+        <!-- நேர வகை group -->
+        <div style="background:var(--bg2);border:1px solid #4f8ef744;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ நேர வகை</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">முழுநேரம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-full-pct"></div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--amber);font-family:'DM Mono',monospace" id="s-part">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">பகுதிநேரம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-part-pct"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PoS group -->
+        <div style="background:var(--bg2);border:1px solid #3ecf8e44;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📟 PoS இயந்திரம்</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--teal);font-family:'DM Mono',monospace" id="s-pos">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">உள்ளது</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-pos-pct"></div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace" id="s-nopos">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">இல்லை</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-nopos-pct"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- நகர்/கிராமம் group -->
+        <div style="background:var(--bg2);border:1px solid #a78bfa44;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏘 பகுதி வகை</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--blue);font-family:'DM Mono',monospace" id="s-urban">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">நகர்புறம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-urban-pct"></div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-rural">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">கிராமபுறம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-rural-pct"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- கட்டிட வகை group -->
+        <div style="background:var(--bg2);border:1px solid #f5a62344;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏠 கட்டிட வகை</div>
+          <div id="s-building-group" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+
       </div>
     </div>
 
     <!-- TABS -->
     <div class="tabs" id="main-tabs">
       <button class="tab active" onclick="switchView('overview')" id="tab-overview">Overview</button>
-      <button class="tab" onclick="switchView('hierarchy')" id="tab-hierarchy">📊 படிநிலை</button>
+      <button class="tab" onclick="switchView('hierarchy')" id="tab-hierarchy">📊 இதுவரை பதிவு செய்யப்பட்டுள்ளவற்றின் விவரம்</button>
       <button class="tab" onclick="switchView('taluk')" id="tab-taluk">Taluk</button>
       <button class="tab" onclick="switchView('block')" id="tab-block">Block</button>
-      <button class="tab" onclick="switchView('data')" id="tab-data">தரவு</button>
+      <button class="tab" onclick="switchView('data')" id="tab-data">✏️ தரவுகளை மாற்றுவதற்கு</button>
       <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access Control</button>
       <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">Audit</button>
     </div>
@@ -364,6 +432,11 @@ tr:last-child td{border-bottom:none}
     <!-- DATA -->
     <div id="view-data">
       <div id="editor-notice" style="display:none"></div>
+    <div id="editor-hero" style="display:none;background:linear-gradient(135deg,#1a2a1a,#0f2010);border:1px solid #3ecf8e44;border-radius:12px;padding:16px 20px;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--green);margin-bottom:4px">நியாய விலைக் கடை — தரவு சரிபார்ப்பு மற்றும் திருத்தம்</div>
+      <div style="font-size:12px;color:var(--muted)" id="hero-block-name"></div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap" id="hero-stats"></div>
+    </div>
       <div class="filters" id="data-filters">
         <input class="search-box" type="text" id="search" placeholder="கடை / குறியீடு தேடவும்..." oninput="applyFilters()">
         <select class="filter-select" id="f-taluk" onchange="applyFilters()"><option value="">எல்லா வட்டமும்</option></select>
@@ -386,7 +459,7 @@ tr:last-child td{border-bottom:none}
           <table>
             <thead><tr>
               <th>#</th><th>வட்டம்</th><th>ஒன்றியம்</th><th>நிறுவனம்</th><th>குறியீடு</th><th>கடை பெயர்</th>
-              <th>நேர வகை</th><th>அட்டைகள்</th><th>PoS</th><th>கட்டிடம்</th><th>விற்பனையாளர்</th><th>கைபேசி</th><th>நிலை</th>
+              <th>நேர வகை</th><th>அட்டைகள்</th><th>PoS</th><th>கட்டிடம்</th><th>விற்பனையாளர்</th><th>கைபேசி</th><th style="color:var(--amber);font-weight:700">✏️ திருத்தம் செய்</th>
             </tr></thead>
             <tbody id="data-tbody"></tbody>
           </table>
@@ -559,6 +632,8 @@ function doLogin() {
     document.getElementById('tab-block').style.display   = 'none';
     document.getElementById('tab-overview').style.display= 'none';
     document.getElementById('stats-section').style.display='none';
+    document.getElementById('editor-hero').style.display='block';
+    document.getElementById('hero-block-name').textContent = cfg.label + ' — ' + (cfg.block||'');
     // Show only hierarchy + data for editors
     switchView('hierarchy');
   }
@@ -638,6 +713,28 @@ async function loadData() {
       (currentUser?.role==='editor' ? currentUser.block + ' — ' : '') +
       displayData.length + ' பதிவுகள் — ' + ts;
 
+    // Fill hero for editors
+    if (currentUser?.role==='editor') {
+      const heroStats = document.getElementById('hero-stats');
+      if (heroStats) {
+        const full = displayData.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+        const part = displayData.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+        const pos  = displayData.filter(r=>g(r,'pos')==='உள்ளது').length;
+        const cards= displayData.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+        heroStats.innerHTML = [
+          ['கடைகள்', displayData.length, '#4f8ef7'],
+          ['முழுநேரம்', full, '#3ecf8e'],
+          ['பகுதிநேரம்', part, '#f5a623'],
+          ['PoS உள்ளது', pos, '#2dd4bf'],
+          ['அட்டைகள்', cards.toLocaleString(), '#a78bfa']
+        ].map(([label,val,color])=>`
+          <div style="background:var(--bg3);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px">
+            <div style="font-size:18px;font-weight:700;color:${color};font-family:'DM Mono',monospace">${val}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${label}</div>
+          </div>`).join('');
+      }
+    }
+
     updateStats(displayData);
     populateFilters(displayData);
     renderOverview(displayData);
@@ -694,16 +791,16 @@ function updateEditorNotice() {
   const ewBadge = document.getElementById('edit-window-badge');
   if (isBlockOpen(block)) {
     const ac = accessControl[block];
-    let msg = '✅ உங்கள் block-க்கு திருத்த சாளரம் திறந்துள்ளது';
+    let msg = '✅ தரவுகளை திருத்தம் செய்வதற்க்கு அனுமதிக்கப்பட்டுள்ளது';
     if (ac?.to) msg += ' — ' + new Date(ac.to).toLocaleString('en-IN');
     notice.innerHTML = `<div class="notice-bar notice-open">${msg}</div>`;
     notice.style.display = 'block';
-    ewBadge.textContent = '🟢 திருத்த அனுமதி';
+    ewBadge.textContent = '✅ தரவுகளை திருத்தம் செய்வதற்க்கு அனுமதிக்கப்பட்டுள்ளது';
     ewBadge.className   = 'tbadge tbadge-open';
   } else {
-    notice.innerHTML = '<div class="notice-bar notice-locked">🔒 இப்போது திருத்த அனுமதி இல்லை. District Office-ஐ தொடர்பு கொள்ளவும்.</div>';
+    notice.innerHTML = '<div class="notice-bar notice-locked">🔒 இப்போது தரவுகளை திருத்தம் செய்வதற்கு அனுமதி இல்லை. District Office-ஐ தொடர்பு கொள்ளவும்.</div>';
     notice.style.display = 'block';
-    ewBadge.textContent = '🔒 திருத்த மூடல்';
+    ewBadge.textContent = '🔒 திருத்த அனுமதி இல்லை';
     ewBadge.className   = 'tbadge tbadge-locked';
   }
   ewBadge.style.display = '';
@@ -724,6 +821,21 @@ function updateStats(data) {
   setText('s-part',part); setText('s-part-pct',pct(part)); setText('s-pos',pos); setText('s-pos-pct',pct(pos));
   setText('s-nopos',nopos); setText('s-nopos-pct',pct(nopos)); setText('s-cards',cards.toLocaleString());
   setText('s-urban',urban); setText('s-urban-pct',pct(urban)); setText('s-rural',rural); setText('s-rural-pct',pct(rural));
+
+  // Building type group
+  const buildingEl = document.getElementById('s-building-group');
+  if (buildingEl) {
+    const bTypes = {};
+    data.forEach(r => { const b=g(r,'building'); if(b) bTypes[b]=(bTypes[b]||0)+1; });
+    const bColors = {'சொந்தம்':'#4f8ef7','அரசு இலவசம்':'#3ecf8e','அரசு வாடகை':'#f5a623','தனியார் வாடகை':'#f06060','தனியார் இலவசம்':'#a78bfa'};
+    buildingEl.innerHTML = Object.entries(bTypes).sort((a,b)=>b[1]-a[1]).map(([type,cnt])=>
+      `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;display:flex;align-items:center;gap:5px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${bColors[type]||'var(--muted)'}"></div>
+        <span style="color:var(--muted)">${type}</span>
+        <span style="font-weight:700;font-family:'DM Mono',monospace;color:var(--text)">${cnt}</span>
+      </div>`
+    ).join('');
+  }
   const C=251,fD=full/n*C,pD=part/n*C,uD=urban/n*C,rD=rural/n*C;
   setDonut('d-full',fD,C,63); setDonut('d-part',pD,C,63-fD);
   setDonut('d-urban',uD,C,63); setDonut('d-rural',rD,C,63-uD);
@@ -776,6 +888,26 @@ function renderBlock(data){
 }
 
 // ── HIERARCHY ──────────────────────────────────────────────
+// ── HIERARCHY EXPAND STATE ────────────────────────────────
+let expandedBlock = null;
+
+function toggleBlockExpand(block, event) {
+  event.stopPropagation();
+  if (expandedBlock === block) {
+    expandedBlock = null;
+  } else {
+    expandedBlock = block;
+  }
+  // Re-render hierarchy with current data
+  const src = currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData;
+  renderHierarchy(src);
+  // Also show detail
+  if (expandedBlock) showHierarchyDetail('block', block);
+  else {
+    document.getElementById('hierarchy-detail').style.display='none';
+  }
+}
+
 function renderHierarchy(data) {
   const container = document.getElementById('hierarchy-container');
   // Build tree: district → taluks → blocks → societies
@@ -816,14 +948,19 @@ function renderHierarchy(data) {
       const isFinal = finaliseStatus['block:'+block];
       const isOpen  = isBlockOpen(block);
       const cls = isFinal ? 'locked-block' : isOpen ? 'open-block' : '';
-      html += `<div style="display:flex;flex-direction:column;align-items:center">
+      html += (() => {
+      const isExpanded = expandedBlock === block;
+      return `<div style="display:flex;flex-direction:column;align-items:center">
         <div class="h-line-v" style="height:14px"></div>
-        <div class="h-node h-block ${cls}" onclick="showHierarchyDetail('block','${block}')"
-          style="font-size:10px;padding:5px 8px">
+        <div class="h-node h-block ${cls}" onclick="toggleBlockExpand('${block}', event)"
+          style="font-size:10px;padding:5px 8px;${isExpanded?'border-color:var(--amber);background:#f5a62318;':''}">
           ${block.replace('திருவண்ணாமலை','TVM')}<br>
           <span style="font-size:9px;opacity:.7">${blockRows.length} ${isFinal?'🔒':isOpen?'🟢':'🔒'}</span>
+          <span style="font-size:9px;color:var(--amber)">${isExpanded?' ▲':' ▼'}</span>
         </div>
+        ${isExpanded ? renderSocietiesUnder(blockRows, block) : ''}
       </div>`;
+    })();
     });
 
     html += `</div></div>`;
@@ -845,6 +982,31 @@ function renderHierarchy(data) {
   </div>`;
 
   container.innerHTML = html;
+}
+
+function renderSocietiesUnder(blockRows, blockName) {
+  const societies = [...new Set(blockRows.map(r=>g(r,'society')).filter(Boolean))].sort();
+  if (!societies.length) return '';
+  const cols = Math.min(societies.length, 4);
+  return `<div style="margin-top:8px;position:relative">
+    <div style="width:1px;height:12px;background:var(--border);margin:0 auto"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:400px;position:relative">
+      <div style="position:absolute;top:0;left:10%;right:10%;height:1px;background:var(--border)"></div>
+      ${societies.map(soc => {
+        const cnt = blockRows.filter(r=>g(r,'society')===soc).length;
+        const isFinal = finaliseStatus['society:'+soc];
+        return `<div style="display:flex;flex-direction:column;align-items:center">
+          <div style="width:1px;height:10px;background:var(--border)"></div>
+          <div class="h-node h-society ${isFinal?'finalised':''}"
+            style="font-size:9px;padding:4px 7px;cursor:pointer"
+            onclick="showHierarchyDetail('society','${soc}')">
+            ${soc.length>12?soc.slice(0,12)+'..':soc}<br>
+            <span style="opacity:.7">${cnt} கடைகள் ${isFinal?'🔒':''}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 }
 
 function showHierarchyDetail(level, name) {
@@ -1073,7 +1235,7 @@ function renderDataTable() {
     const blkFinal=finaliseStatus['block:'+g(r,'block')];
     const statusBadge=blkFinal?'<span class="badge badge-final" style="font-size:9px">🔒B</span>':
       socFinal?'<span class="badge badge-final" style="font-size:9px">🔒S</span>':
-      editable?'<span class="badge badge-open" style="font-size:9px">✏️</span>':
+      editable?'<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>':
       '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
     return `<tr style="${rowStyle}" onclick="${editable?'openEdit('+r._row+')':'showReadOnly('+r._row+')'}">
       <td class="td-mono" style="color:var(--muted)">${g(r,'serial')}</td>
