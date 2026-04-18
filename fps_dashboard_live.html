@@ -272,7 +272,7 @@ tr:last-child td{border-bottom:none}
 
         <!-- நேர வகை group -->
         <div style="background:var(--bg2);border:1px solid #4f8ef744;border-radius:12px;padding:14px">
-          <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ நேர வகை</div>
+          <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ முழுநேரம் - பகுதிநேரம்</div>
           <div style="display:flex;gap:10px">
             <div style="flex:1;text-align:center">
               <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full">—</div>
@@ -308,7 +308,7 @@ tr:last-child td{border-bottom:none}
 
         <!-- நகர்/கிராமம் group -->
         <div style="background:var(--bg2);border:1px solid #a78bfa44;border-radius:12px;padding:14px">
-          <div style="font-size:10px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏘 பகுதி வகை</div>
+          <div style="font-size:10px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏘 இடப்பகுதி</div>
           <div style="display:flex;gap:10px">
             <div style="flex:1;text-align:center">
               <div style="font-size:22px;font-weight:700;color:var(--blue);font-family:'DM Mono',monospace" id="s-urban">—</div>
@@ -346,38 +346,14 @@ tr:last-child td{border-bottom:none}
 
     <!-- OVERVIEW -->
     <div id="view-overview" class="active">
-      <div class="grid2">
-        <div class="card">
-          <div class="card-title">முழுநேரம் vs பகுதிநேரம்</div>
-          <div class="donut-wrap">
-            <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
-              <circle cx="55" cy="55" r="40" fill="none" stroke="#1e2333" stroke-width="16"/>
-              <circle id="d-full" cx="55" cy="55" r="40" fill="none" stroke="#4f8ef7" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
-              <circle id="d-part" cx="55" cy="55" r="40" fill="none" stroke="#f5a623" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
-              <text x="55" y="51" text-anchor="middle" font-family="DM Mono" font-size="16" font-weight="700" fill="#e8eaf2" id="d-center">0</text>
-              <text x="55" y="65" text-anchor="middle" font-family="DM Sans" font-size="9" fill="#7a8099">shops</text>
-            </svg>
-            <div style="flex:1">
-              <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7"></div>முழுநேரம்<span class="legend-val" id="leg-full">0</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>பகுதிநேரம்<span class="legend-val" id="leg-part">0</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">நகர்புறம் / கிராமபுறம்</div>
-          <div class="donut-wrap">
-            <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
-              <circle cx="55" cy="55" r="40" fill="none" stroke="#1e2333" stroke-width="16"/>
-              <circle id="d-urban" cx="55" cy="55" r="40" fill="none" stroke="#4f8ef7" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
-              <circle id="d-rural" cx="55" cy="55" r="40" fill="none" stroke="#3ecf8e" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
-            </svg>
-            <div style="flex:1">
-              <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7"></div>நகர்புறம்<span class="legend-val" id="leg-urban">0</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#3ecf8e"></div>கிராமபுறம்<span class="legend-val" id="leg-rural">0</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Hidden elements for JS compatibility -->
+      <svg style="display:none">
+        <circle id="d-full"/><circle id="d-part"/>
+        <circle id="d-urban"/><circle id="d-rural"/>
+        <text id="d-center"></text>
+      </svg>
+      <span style="display:none" id="leg-full"></span><span style="display:none" id="leg-part"></span>
+      <span style="display:none" id="leg-urban"></span><span style="display:none" id="leg-rural"></span>
       <div class="grid3">
         <div class="card"><div class="card-title">கட்டிட வகை</div><div id="b-building"></div></div>
         <div class="card"><div class="card-title">Agency Group</div><div id="b-agency"></div></div>
@@ -624,8 +600,9 @@ function doLogin() {
     roleBadge.className   = 'tbadge tbadge-master';
     document.getElementById('tab-access').style.display = '';
     document.getElementById('tab-audit').style.display  = '';
-    document.getElementById('btn-settings').style.display = '';
     document.getElementById('btn-csv').style.display = '';
+    // Settings only for sathish (main master)
+    if (uid === 'sathish') document.getElementById('btn-settings').style.display = '';
   } else {
     roleBadge.textContent = 'Editor';
     roleBadge.className   = 'tbadge tbadge-editor';
@@ -633,7 +610,6 @@ function doLogin() {
     document.getElementById('tab-taluk').style.display   = 'none';
     document.getElementById('tab-block').style.display   = 'none';
     document.getElementById('tab-overview').style.display= 'none';
-    document.getElementById('stats-section').style.display='none';
     document.getElementById('editor-hero').style.display='block';
     document.getElementById('hero-block-name').textContent = cfg.label + ' — ' + (cfg.block||'');
     // Show only hierarchy + data for editors
@@ -1239,6 +1215,9 @@ function renderDataTable() {
       socFinal?'<span class="badge badge-final" style="font-size:9px">🔒S</span>':
       editable?'<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>':
       '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
+    const delBtn = (editable || currentUser?.role==='master') ?
+      `<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px"
+        onclick="event.stopPropagation();deleteRow(${r._row},'${g(r,'shopname').replace(/'/g,"\\'")}')">🗑</button>` : '';
     return `<tr style="${rowStyle}" onclick="${editable?'openEdit('+r._row+')':'showReadOnly('+r._row+')'}">
       <td class="td-mono" style="color:var(--muted)">${g(r,'serial')}</td>
       <td style="font-size:10px;color:var(--muted)">${g(r,'taluk')}</td>
@@ -1272,14 +1251,42 @@ function renderPagination() {
 function goPage(p){currentPage=p;renderDataTable();}
 
 // ── EDIT MODAL ─────────────────────────────────────────────
+// Dropdown options for edit fields
+const EDIT_DROPDOWNS = {
+  'ஒன்றியம்': ["அனக்காவூர்","ஆரணி  கிழக்கு","ஆரணி மேற்கு","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்","செங்கம்","செய்யார்","சேத்துப்பட்டு","ஜமுனாமரத்துர்","தண்டராம்பட்டு","திருவண்ணாமலை 1","திருவண்ணாமலை 2","திருவண்ணாமலை HQ","துரிஞ்சாபுரம்","தெள்ளார்","புதுப்பாளையம்","பெரணமல்லூர்","போளுர்","வந்தவாசி","வெம்பாக்கம்  1","வெம்பாக்கம்  2"],
+  'வட்டம்': ["Arani (Tk)","Chengam (Tk)","Chetpet","Cheyyar (Tk)","Jamunamarathur","Kalasapakkam(Tk)","Kilpennathur","Polur (Tk)","Thandrampattu","Thiruvannamalai (Tk)","Vandavasi (Tk)","Vembakkam"],
+  'முழுநேரம் / பகுதிநேரம்': ["முழுநேரம்","பகுதிநேரம்"],
+  'PoS இயந்திரம் உள்ளதா?': ["உள்ளது","இல்லை"],
+  'கட்டிட வகை': ["சொந்தம்","அரசு இலவசம்","அரசு வாடகை","தனியார் வாடகை","தனியார் இலவசம்"],
+  'நகர்புறம் / கிராமபுறம்': ["நகர்புறம்","கிராமபுறம்"],
+  'Agency Group': ["Cooperative","SHG","TNCSC"],
+  'கிடங்கு': ["திருவண்ணாமலை","கீழ்பென்னாத்தூர்","புதுப்பாளையம்","தண்டராம்பட்டு","போளூர்","போளூர் (ஜவ்வாது மலைகள்)","எலத்தூர்","ஆரணி","தச்சம்பாடி","செய்யார்","வந்தவாசி","வெம்பாக்கம்"],
+  'சட்டமன்ற தொகுதி': ["ஆரணி","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்","செங்கம்","செய்யார்","திருவண்ணாமலை","போளுர்","வந்தவாசி"],
+  'பாராளுமன்ற தொகுதி': ["திருவண்ணாமலை","ஆரணி"],
+  'கூட்டுறவு நிறுவனம்': ["அக்ராபாளையம்","அத்திமுர்","அனக்காவூர்","அன்மருதை","அரடாப்பட்டு","அரட்டவாடி","அரியப்பாடி","அருக்காவூர்","அரையாளம்","அழகானந்தல்","ஆக்கூர்","ஆதனூர்","ஆத்துரை","ஆரணி","ஆரணி சிஎம்எஸ்","ஆரணி வைகை கூட்டுறவு பண்டகசாலை","ஆருத்திராபட்டு","ஆர்ப்பாக்கம்","ஆலத்துர்","ஆவூர்","இசுக்குழிக்காட்டேரி","இராதாபுரம்","இளங்காடு","எடத்தனுர்","எம்.வி.நல்லூர்","எஸ் வி நகரம்","எஸ் வி நல்லூர்","ஏ.டி.மங்கலம்","ஓசூர்","கடலாடி","கண்ணமங்கலம்","கமலபுத்துர்","கலசபாக்கம்","களம்பூர்","காஞ்சி","காட்டாம்பூண்டி","காரப்பட்டு","காழியூர் புளியரம்பாக்கம்","கீரனுர்","கீழ்கொடுங்காலூர்","கீழ்நர்மா","கீழ்ப்பென்னாத்துர்","குப்பநத்தம்","குப்பம்","குயிலம்","கே.ப்பி.புதூர்","கே.மடம்","கேட்டவரம்பாளையம்","கேளுர்","கொருக்கை","கொழப்பலூர்","கோட்டுப்பாக்கம்","சந்தவாசல்","சாத்தனுர்","சாலவேடு","சித்தாத்தூர்","சிறுநாத்துர்","சு.காட்டேரி","சுனைப்பட்டு","செ.சொர்ப்பனந்தல்","செ.நாச்சிப்பட்டு","செங்கம்","செங்கம் சி.எம்.எஸ்","செங்காடு","செய்யார் சி.எம்.எஸ்","சேத்துப்பட்டு","சொரகொளத்துர்","சோமாசிப்பாடி","ஜமுனாமரத்துர்","டி,கல்லேரி","டி.என்.ஐ.காரியந்தல்","டி.எம்.எஸ்.மங்கலம்","தச்சம்பட்டு","தச்சம்பாடி","தண்டராம்பட்டு","தண்டரை","தண்டலம்","தலையாம்பள்ளம்","தானிப்பாடி","தி.மா.நு.கூ.மொ.வி.ப.சாலை","திருப்பனங்காடு","திருவண்ணாமலை","திருவண்ணாமலை வே.உ.கூ.வி.சங்கம்","திருவத்திபுரம்","தூசி","தெண்பூண்டிப்பட்டு","தென்கரும்பலுர்","தென்கழனி","தெய்யார்","தெள்ளார்","தெள்ளார்   சி.எம்.எஸ்","தேசூர்","தேத்துறை","தேவிகாபுரம்","தேவிகாபுரம் பண்டகசாலை -1","நம்மியம்பட்டு","நயம்பாடி","நல்லவன்பாளையம்","நல்லூர்","நாடழகானந்தல்","நாயுடுமங்கலம்","நாராயணகுப்பம்","நார்த்தாம்பூண்டி","நாவல்பாக்கம்","நீப்பத்துறை","நெடுங்குணம்","நெடும்பிறை","படவேடு","பனைஓலைப்பாடி","பரமனந்தல்","பல்லி","பழையனுர்","பாச்சல்","பாடகம்","பிரம்மதேசம்","பில்லுர்","புதுப்பாளையம்","புரிசை","பெரணமல்லூர்","பெரியஓலைப்பாடி","பெரியகல்லபாடி","பெரியகிளாம்பாடி","பெரியகோளாப்பாடி","பெறுந்துறைப்பட்டு","பேராயம்பட்டு","பைங்கினர்","போளுர்","போளுர் சி.எம்.எஸ்","மங்கலம்","மட்டதாரி","மண்டகொளத்துர்","மருதாடு","மல்லவாடி","மழையூர்","மாங்கால்","மாம்பட்டு","மாரியநல்லுர்","முளகிரிப்பட்டு","முள்ளண்டிபுரம்","மேக்களுர்","மேனல்லூர்","மேலத்தாங்கல்","மேல்நகர்","மேல்பள்ளிப்பட்டு","மேல்புழுதியூர்","மேல்முடியனுர்","மேல்ராவந்தவாடி","மொடையூர்","மோசவாடி","மோரணம்","ராந்தம்","ரெட்டியார்பாளையம்","வடநாங்கூர்","வடமாதிமங்கலம்","வடமாத்துர்","வடவணக்கம்பாடி","வந்தவாசி","வந்தவாசி கூட்டுறவு பண்டகசாலை","வந்தவாசி சி.எம்.எஸ்","வல்லம்","வள்ளிவாகை","வழுர்","வானாபுரம்","வாழ்குடை","விண்ணமங்கலம்","வீரளுர்","வெம்பாக்கம்","வேங்கிக்கால்","வேட்டவலம்","வேலப்பாடி"]
+};
+
 const EDIT_FIELDS=[
-  ['shopname','நியாய விலைக் கடையின் பெயர்'],['shopcode','கடை குறியீடு எண்'],
-  ['block','ஒன்றியம்'],['taluk','வட்டம்'],['timetype','முழுநேரம் / பகுதிநேரம்'],
-  ['cards','குடும்ப அட்டைகள் எண்ணிக்கை'],['pos','PoS இயந்திரம் உள்ளதா?'],
-  ['posother','தாய்க்கடை PoS குறியீட்டு எண்'],['building','கட்டிட வகை'],
-  ['buildingname','கட்டடத்தின் பெயர்'],['seller','விற்பனையாளர் பெயர்'],
-  ['phone','விற்பனையாளர் கைபேசி எண்'],['area','நகர்புறம் / கிராமபுறம்'],
-  ['godown','கிடங்கு'],['remarks','குறிப்பு']
+  ['shopname','நியாய விலைக் கடையின் பெயர்'],
+  ['shopcode','கடை குறியீடு எண்'],
+  ['society','கூட்டுறவு நிறுவனம்'],
+  ['block','ஒன்றியம்'],
+  ['taluk','வட்டம்'],
+  ['mla','சட்டமன்ற தொகுதி'],
+  ['mp','பாராளுமன்ற தொகுதி'],
+  ['agency','Agency Group'],
+  ['timetype','முழுநேரம் / பகுதிநேரம்'],
+  ['cards','குடும்ப அட்டைகள் எண்ணிக்கை'],
+  ['pos','PoS இயந்திரம் உள்ளதா?'],
+  ['posother','தாய்க்கடை PoS குறியீட்டு எண்'],
+  ['building','கட்டிட வகை'],
+  ['buildingname','கட்டடத்தின் பெயர்'],
+  ['seller','விற்பனையாளர் பெயர்'],
+  ['phone','விற்பனையாளர் கைபேசி எண்'],
+  ['area','நகர்புறம் / கிராமபுறம்'],
+  ['godown','கிடங்கு'],
+  ['opendays','திறந்து செயல்படும் நாட்கள்'],
+  ['remarks','குறிப்பு']
 ];
 
 function openEdit(rowNum) {
@@ -1289,9 +1296,19 @@ function openEdit(rowNum) {
   document.getElementById('modal-title-text').textContent=g(row,'shopname')+' — '+g(row,'shopcode');
   document.getElementById('modal-locked-notice').style.display='none';
   const fields=document.getElementById('modal-fields');
-  fields.innerHTML=EDIT_FIELDS.map(([key,label])=>`
-    <div class="modal-field"><label>${label}</label>
-    <input id="ef-${key}" value="${(g(row,key)||'').replace(/"/g,'&quot;')}"></div>`).join('');
+  fields.innerHTML=EDIT_FIELDS.map(([key,col])=>{
+    const colKey = COLS[key] || col;
+    const val = (row[colKey]||'').toString().trim();
+    const opts = EDIT_DROPDOWNS[colKey];
+    if (opts) {
+      return `<div class="modal-field"><label>${colKey}</label>
+        <select id="ef-${key}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit">
+          ${opts.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
+        </select></div>`;
+    }
+    return `<div class="modal-field"><label>${colKey}</label>
+      <input id="ef-${key}" value="${val.replace(/"/g,'&quot;')}"></div>`;
+  }).join('');
   const actions=document.getElementById('modal-actions');
 
   // Society finalise button (visible to editors for their society)
@@ -1324,6 +1341,31 @@ function showReadOnly(rowNum) {
   document.getElementById('edit-modal').classList.add('open');
 }
 
+async function deleteRow(rowNum, shopName) {
+  const reason = prompt(`"${shopName}" — நீக்க காரணம் கூறவும்:\n(Delete reason required)`);
+  if (reason === null) return; // cancelled
+  if (!reason.trim()) { alert('காரணம் கட்டாயம் தேவை'); return; }
+  if (!confirm(`"${shopName}" — இந்த பதிவை நிரந்தரமாக நீக்கவா?\n\nகாரணம்: ${reason}`)) return;
+
+  // Log deletion to audit before deleting
+  await sendToScript({
+    action: 'deleteRow',
+    rowNumber: rowNum,
+    shopName: shopName,
+    reason: reason,
+    editor: currentUser.label,
+    timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
+  });
+
+  // Remove from local data
+  const idx = allData.findIndex(r => r._row === rowNum);
+  if (idx >= 0) allData.splice(idx, 1);
+  // Re-index _row
+  allData.forEach((r, i) => r._row = i + 2);
+  applyFilters();
+  alert(`✅ "${shopName}" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.`);
+}
+
 function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
 
 async function saveEdit() {
@@ -1333,9 +1375,12 @@ async function saveEdit() {
   const changes=[];
   EDIT_FIELDS.forEach(([key,col])=>{
     const el=document.getElementById('ef-'+key);
-    if(el && el.value.trim()!==g(row,key)) {
-      changes.push({col, old:g(row,key), new:el.value.trim()});
-      row[col]=el.value.trim();
+    if(!el) return;
+    const newVal = el.value.trim();
+    const oldVal = (row[COLS[key]]||row[col]||'').toString().trim();
+    if(newVal !== oldVal) {
+      changes.push({col: COLS[key]||col, old:oldVal, new:newVal});
+      if(COLS[key]) row[COLS[key]]=newVal; else row[col]=newVal;
     }
   });
   if(!changes.length){closeModal();return;}
