@@ -431,8 +431,9 @@ tr:last-child td{border-bottom:none}
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <div class="card-title" style="margin:0" id="data-count">—</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap" id="bulk-actions">
-          <button class="btn btn-outline" onclick="exportExcel()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel Download</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="bulk-actions">
+          <button class="btn btn-outline" onclick="exportExcel()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel</button>
+          <button class="btn btn-outline" onclick="exportCSV()" style="font-size:11px">⬇ CSV</button>
         </div>
         </div>
         <div class="table-wrap">
@@ -705,6 +706,11 @@ async function loadData() {
       (currentUser?.role==='editor' ? currentUser.block + ' — ' : '') +
       displayData.length + ' பதிவுகள் — ' + ts;
 
+    // Initialize filteredData for editors too
+    if (currentUser?.role==='editor') {
+      filteredData = allData.filter(r => g(r,'block') === currentUser.block);
+    }
+
     // Fill hero for editors
     if (currentUser?.role==='editor') {
       const heroStats = document.getElementById('hero-stats');
@@ -734,8 +740,15 @@ async function loadData() {
     renderBlock(displayData);
     renderHierarchy(displayData);
     applyFilters();
+    // Auto-expand block for editors
+    if (currentUser?.role==='editor' && currentUser.block) {
+      expandedBlock = currentUser.block;
+      renderHierarchy(displayData);
+    }
     if (currentUser?.role === 'master') { loadAudit(); renderAccessControl(); }
     updateEditorNotice();
+    // Always populate filteredData so CSV/Excel export works immediately
+    applyFilters();
   } catch(e) {
     document.getElementById('topbar-sub').textContent = 'Error: ' + e.message;
   }
@@ -902,57 +915,73 @@ function toggleBlockExpand(block, event) {
 
 function renderHierarchy(data) {
   const container = document.getElementById('hierarchy-container');
-  // Build tree: district → taluks → blocks → societies
   const taluks = [...new Set(data.map(r=>g(r,'taluk')).filter(Boolean))].sort();
 
+  // Build District node
   let html = `
-  <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:900px">
+  <div style="display:flex;flex-direction:column;align-items:center;min-width:800px;padding-bottom:20px">
+
     <!-- District -->
-    <div class="h-node h-district" onclick="showHierarchyDetail('district','திருவண்ணாமலை மாவட்டம்')">
+    <div class="h-node h-district" onclick="showHierarchyDetail('district','திருவண்ணாமலை மாவட்டம்')"
+      style="padding:14px 28px;font-size:14px">
       🏛️ திருவண்ணாமலை மாவட்டம்
-      <div style="font-size:10px;opacity:.8;margin-top:2px">${data.length} கடைகள்</div>
+      <div style="font-size:11px;opacity:.8;margin-top:3px">${data.length} கடைகள்</div>
     </div>
-    <div class="h-line-v"></div>
 
-    <!-- Taluks row -->
-    <div style="display:flex;gap:0;align-items:flex-start;position:relative;width:100%">
-      <!-- Horizontal line spanning all taluks -->
-      <div style="position:absolute;top:0;left:5%;right:5%;height:1px;background:var(--border)"></div>
-  `;
+    <!-- Connector to taluks -->
+    <div style="width:1px;height:24px;background:var(--border)"></div>
+    <div style="position:relative;width:100%">
+      <div style="position:absolute;top:0;left:10%;right:10%;height:1px;background:var(--border)"></div>
+    </div>
 
-  taluks.forEach((taluk, ti) => {
+    <!-- Taluk row -->
+    <div style="display:flex;gap:20px;justify-content:center;flex-wrap:nowrap;width:100%;padding:0 10px">`;
+
+  taluks.forEach(taluk => {
     const talukRows = data.filter(r=>g(r,'taluk')===taluk);
     const blocks = [...new Set(talukRows.map(r=>g(r,'block')).filter(Boolean))].sort();
-    const isLast = ti === taluks.length - 1;
 
-    html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:0 4px">
-      <div class="h-line-v" style="height:20px"></div>
+    html += `<div style="display:flex;flex-direction:column;align-items:center;gap:0">
+      <!-- Connector down to taluk -->
+      <div style="width:1px;height:20px;background:var(--border)"></div>
+
+      <!-- Taluk box -->
       <div class="h-node h-taluk" onclick="showHierarchyDetail('taluk','${taluk}')"
-        style="font-size:10px;padding:6px 10px;margin-bottom:0">
-        ${taluk}<div style="font-size:9px;opacity:.7">${talukRows.length}</div>
+        style="font-size:10px;padding:6px 10px;white-space:nowrap">
+        ${taluk}<br><span style="font-size:9px;opacity:.7">${talukRows.length}</span>
       </div>
-      <div class="h-line-v" style="height:16px"></div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;position:relative">
-        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--border)"></div>`;
+
+      <!-- Connector to blocks -->
+      <div style="width:1px;height:14px;background:var(--border)"></div>
+      <div style="position:relative;width:100%;min-width:${blocks.length*90}px">
+        ${blocks.length>1?`<div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--border)"></div>`:''}
+      </div>
+
+      <!-- Blocks row -->
+      <div style="display:flex;gap:8px;justify-content:center">`;
 
     blocks.forEach(block => {
       const blockRows = talukRows.filter(r=>g(r,'block')===block);
-      const isFinal = finaliseStatus['block:'+block];
-      const isOpen  = isBlockOpen(block);
-      const cls = isFinal ? 'locked-block' : isOpen ? 'open-block' : '';
-      html += (() => {
-      const isExpanded = expandedBlock === block;
-      return `<div style="display:flex;flex-direction:column;align-items:center">
-        <div class="h-line-v" style="height:14px"></div>
-        <div class="h-node h-block ${cls}" onclick="toggleBlockExpand('${block}', event)"
-          style="font-size:10px;padding:5px 8px;${isExpanded?'border-color:var(--amber);background:#f5a62318;':''}">
-          ${block.replace('திருவண்ணாமலை','TVM')}<br>
-          <span style="font-size:9px;opacity:.7">${blockRows.length} ${isFinal?'🔒':isOpen?'🟢':'🔒'}</span>
-          <span style="font-size:9px;color:var(--amber)">${isExpanded?' ▲':' ▼'}</span>
+      const isFinal   = finaliseStatus['block:'+block];
+      const isOpen    = isBlockOpen(block);
+      const isExp     = expandedBlock === block;
+      const borderCol = isFinal?'#a78bfa44':isOpen?'#3ecf8e44':'#f0606044';
+      const textCol   = isFinal?'var(--purple)':isOpen?'var(--green)':'var(--red)';
+      const icon      = isFinal?'🔒':isOpen?'🟢':'🔒';
+
+      html += `<div style="display:flex;flex-direction:column;align-items:center">
+        <div style="width:1px;height:12px;background:var(--border)"></div>
+        <div class="h-node" onclick="toggleBlockExpand('${block}',event)"
+          style="font-size:9px;padding:5px 8px;border:1px solid ${borderCol};
+                 color:${textCol};background:${isExp?'#f5a62318':'var(--bg3)'};
+                 border-radius:8px;cursor:pointer;text-align:center;min-width:70px;
+                 ${isExp?'border-color:var(--amber);':''}">
+          ${block.replace('திருவண்ணாமலை','TVM').replace('  ',' ')}<br>
+          <span style="font-size:8px;opacity:.8">${blockRows.length} ${icon}</span>
+          <span style="font-size:8px;color:var(--amber)">${isExp?' ▲':' ▼'}</span>
         </div>
-        ${isExpanded ? renderSocietiesUnder(blockRows, block) : ''}
+        ${isExp ? renderSocietiesUnder(blockRows, block) : ''}
       </div>`;
-    })();
     });
 
     html += `</div></div>`;
@@ -960,45 +989,15 @@ function renderHierarchy(data) {
 
   html += `</div></div>`;
 
-  html += `
-  <div style="margin-top:16px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
-      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #3ecf8e44;background:var(--bg3)"></div> Block திறந்துள்ளது
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
-      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #f0606044;background:var(--bg3)"></div> Block மூடப்பட்டுள்ளது
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
-      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #a78bfa44;background:var(--bg3)"></div> Finalised
-    </div>
+  // Legend
+  html += `<div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:12px">
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#3ecf8e22;border:1px solid #3ecf8e44"></div>திறந்துள்ளது</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#f0606022;border:1px solid #f0606044"></div>மூடப்பட்டுள்ளது</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#a78bfa22;border:1px solid #a78bfa44"></div>Finalised</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">▼ Click block to expand societies</div>
   </div>`;
 
   container.innerHTML = html;
-}
-
-function renderSocietiesUnder(blockRows, blockName) {
-  const societies = [...new Set(blockRows.map(r=>g(r,'society')).filter(Boolean))].sort();
-  if (!societies.length) return '';
-  const cols = Math.min(societies.length, 4);
-  return `<div style="margin-top:8px;position:relative">
-    <div style="width:1px;height:12px;background:var(--border);margin:0 auto"></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:400px;position:relative">
-      <div style="position:absolute;top:0;left:10%;right:10%;height:1px;background:var(--border)"></div>
-      ${societies.map(soc => {
-        const cnt = blockRows.filter(r=>g(r,'society')===soc).length;
-        const isFinal = finaliseStatus['society:'+soc];
-        return `<div style="display:flex;flex-direction:column;align-items:center">
-          <div style="width:1px;height:10px;background:var(--border)"></div>
-          <div class="h-node h-society ${isFinal?'finalised':''}"
-            style="font-size:9px;padding:4px 7px;cursor:pointer"
-            onclick="showHierarchyDetail('society','${soc}')">
-            ${soc.length>12?soc.slice(0,12)+'..':soc}<br>
-            <span style="opacity:.7">${cnt} கடைகள் ${isFinal?'🔒':''}</span>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`;
 }
 
 function showHierarchyDetail(level, name) {
@@ -1179,12 +1178,13 @@ function populateSel(id,items,ph){
 }
 
 function applyFilters() {
-  const q   = document.getElementById('search').value.toLowerCase();
-  const tal = document.getElementById('f-taluk').value;
-  const blk = document.getElementById('f-block').value;
-  const soc = document.getElementById('f-society').value;
-  const pos = document.getElementById('f-pos').value;
-  const tm  = document.getElementById('f-time').value;
+  const q   = (document.getElementById('search')?.value||'').toLowerCase();
+  const tal = document.getElementById('f-taluk')?.value||'';
+  const blk = document.getElementById('f-block')?.value||'';
+  const soc = document.getElementById('f-society')?.value||'';
+  const pos = document.getElementById('f-pos')?.value||'';
+  const tm  = document.getElementById('f-time')?.value||'';
+  // Editors always see only their block — regardless of filters
   const src = currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData;
   filteredData = src.filter(r=>{
     if(tal && g(r,'taluk')!==tal)   return false;
@@ -1229,8 +1229,9 @@ function renderDataTable() {
       socFinal?'<span class="badge badge-final" style="font-size:9px">🔒S</span>':
       editable?'<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>':
       '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
+    const shopNameSafe = g(r,'shopname').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const delBtn = (editable || currentUser?.role==='master') ?
-      '<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px" onclick="event.stopPropagation();deleteRow(' + r._row + ',\'' + g(r,'shopname').replace(/'/g,"\\'") + '\')">🗑</button>' : '';
+      '<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px" onclick="event.stopPropagation();deleteRow(' + r._row + ',\'' + shopNameSafe + '\')">🗑</button>' : '';
     return `<tr style="${rowStyle}" onclick="${editable?'openEdit('+r._row+')':'showReadOnly('+r._row+')'}">
       <td class="td-mono" style="color:var(--muted)">${g(r,'serial')}</td>
       <td style="font-size:10px;color:var(--muted)">${g(r,'taluk')}</td>
@@ -1425,11 +1426,12 @@ async function sendToScript(payload) {
 // ── EXPORT ─────────────────────────────────────────────────
 // ── EXCEL DOWNLOAD ─────────────────────────────────────────
 function exportExcel() {
-  if (!filteredData.length) { alert('தரவு இல்லை'); return; }
+  // Use filteredData if available, otherwise fall back to allData
+  const baseData = filteredData.length ? filteredData : allData;
   const src = currentUser?.role==='editor'
-    ? filteredData.filter(r => (r[COLS.block]||'') === currentUser.block)
-    : filteredData;
-  if (!src.length) { alert('தரவு இல்லை'); return; }
+    ? baseData.filter(r => g(r,'block') === currentUser.block)
+    : baseData;
+  if (!src.length) { alert('தரவு இல்லை — முதலில் data load ஆகட்டும்'); return; }
 
   // Build rows
   const keys = Object.keys(src[0]).filter(k => k !== '_row');
@@ -1479,7 +1481,9 @@ async function downloadAuditExcel() {
 }
 
 function exportCSV() {
-  if(!filteredData.length){alert('தரவு இல்லை');return;}
+  const exportData = filteredData.length ? filteredData : allData;
+  if(!exportData.length){alert('தரவு இல்லை — முதலில் Refresh செய்யவும்');return;}
+  filteredData = exportData;
   const keys=Object.keys(filteredData[0]).filter(k=>k!=='_row');
   const rows=[keys.join(','),...filteredData.map(r=>keys.map(k=>`"${(r[k]||'').replace(/"/g,'""')}"`).join(','))];
   const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
