@@ -1311,17 +1311,7 @@ function openEdit(rowNum) {
   }).join('');
   const actions=document.getElementById('modal-actions');
 
-  // Society finalise button (visible to editors for their society)
-  const society=g(row,'society');
-  const socFinal=finaliseStatus['society:'+society];
-  const showSocBtn = currentUser?.role==='master' ||
-    (currentUser?.role==='editor' && isBlockOpen(currentUser.block));
-  const socBtn = showSocBtn
-    ? `<button class="btn ${socFinal?'btn-red':'btn-amber'}" onclick="toggleFinaliseSociety('${society}','')">${socFinal?'🔓 Society Unlock':'🔒 Society Finalise'}</button>`
-    : '';
-
-  actions.innerHTML=`
-    ${socBtn}
+   actions.innerHTML=`
     <button class="btn btn-outline" onclick="closeModal()">ரத்து</button>
     <button class="btn btn-green" onclick="saveEdit()">சேமி ✓</button>`;
   document.getElementById('edit-modal').classList.add('open');
