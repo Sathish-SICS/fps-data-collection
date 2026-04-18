@@ -2,6 +2,9 @@
 <html lang="ta">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FPS Dashboard — Thiruvannamalai</title>
 <style>
@@ -704,7 +707,7 @@ async function loadData() {
     const ts = new Date().toLocaleTimeString('en-IN');
     document.getElementById('topbar-sub').textContent =
       (currentUser?.role==='editor' ? currentUser.block + ' — ' : '') +
-      displayData.length + ' பதிவுகள் — ' + ts;
+      displayData.length + ' பதிவுகள் — ' + ts + ' | v20260418_1305';
 
     // Initialize filteredData for editors too
     if (currentUser?.role==='editor') {
@@ -1204,6 +1207,42 @@ function clearFilters() {
   applyFilters();
 }
 
+
+function makeRow(r) {
+  const pos = g(r,'pos'), tm = g(r,'timetype');
+  const editable = canEditRow(r);
+  const rowStyle = editable ? 'cursor:pointer' : 'cursor:default;opacity:.8';
+  const socFinal = finaliseStatus['society:'+g(r,'society')];
+  const blkFinal = finaliseStatus['block:'+g(r,'block')];
+  let statusBadge;
+  if (blkFinal) statusBadge = '<span class="badge badge-final" style="font-size:9px">🔒B</span>';
+  else if (socFinal) statusBadge = '<span class="badge badge-final" style="font-size:9px">🔒S</span>';
+  else if (editable) statusBadge = '<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>';
+  else statusBadge = '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
+
+  let delBtnHtml = '';
+  if (editable || currentUser?.role === 'master') {
+    delBtnHtml = '<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px" onclick="event.stopPropagation();deleteRow(' + r._row + ',this)">🗑</button>';
+  }
+
+  const clickFn = editable ? 'openEdit(' + r._row + ')' : 'showReadOnly(' + r._row + ')';
+  return '<tr style="' + rowStyle + '" onclick="' + clickFn + '">' +
+    '<td class="td-mono" style="color:var(--muted)">' + g(r,'serial') + '</td>' +
+    '<td style="font-size:10px;color:var(--muted)">' + g(r,'taluk') + '</td>' +
+    '<td style="font-size:11px">' + g(r,'block') + '</td>' +
+    '<td style="font-size:10px;color:var(--muted)">' + g(r,'society') + '</td>' +
+    '<td class="td-mono" style="color:var(--teal)">' + g(r,'shopcode') + '</td>' +
+    '<td style="font-weight:500">' + g(r,'shopname') + '</td>' +
+    '<td><span class="badge ' + (tm==='முழுநேரம்'?'badge-full':'badge-part') + '">' + tm + '</span></td>' +
+    '<td class="td-mono">' + g(r,'cards') + '</td>' +
+    '<td><span class="badge ' + (pos==='உள்ளது'?'badge-yes':'badge-no') + '">' + pos + '</span></td>' +
+    '<td style="font-size:10px;color:var(--muted)">' + g(r,'building') + '</td>' +
+    '<td style="font-size:11px">' + g(r,'seller') + '</td>' +
+    '<td class="td-mono" style="color:var(--muted);font-size:10px">' + g(r,'phone') + '</td>' +
+    '<td>' + statusBadge + delBtnHtml + '</td>' +
+    '</tr>';
+}
+
 function renderDataTable() {
   const start=(currentPage-1)*PAGE_SIZE;
   const page=filteredData.slice(start,start+PAGE_SIZE);
@@ -1218,36 +1257,8 @@ function renderDataTable() {
       : `<span class="badge badge-final">🔒 Block Finalised — திருத்த முடியாது</span>`;
   } else { bulkActions.innerHTML=''; }
 
-  const tbody=document.getElementById('data-tbody');
-  tbody.innerHTML=page.map(r=>{
-    const pos=g(r,'pos'),tm=g(r,'timetype');
-    const editable=canEditRow(r);
-    const rowStyle=editable?'cursor:pointer':'cursor:default;opacity:.8';
-    const socFinal=finaliseStatus['society:'+g(r,'society')];
-    const blkFinal=finaliseStatus['block:'+g(r,'block')];
-    const statusBadge=blkFinal?'<span class="badge badge-final" style="font-size:9px">🔒B</span>':
-      socFinal?'<span class="badge badge-final" style="font-size:9px">🔒S</span>':
-      editable?'<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>':
-      '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
-    const shopNameSafe = g(r,'shopname').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const delBtn = (editable || currentUser?.role==='master') ?
-      '<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px" onclick="event.stopPropagation();deleteRow(' + r._row + ',\'' + shopNameSafe + '\')">🗑</button>' : '';
-    return `<tr style="${rowStyle}" onclick="${editable?'openEdit('+r._row+')':'showReadOnly('+r._row+')'}">
-      <td class="td-mono" style="color:var(--muted)">${g(r,'serial')}</td>
-      <td style="font-size:10px;color:var(--muted)">${g(r,'taluk')}</td>
-      <td style="font-size:11px">${g(r,'block')}</td>
-      <td style="font-size:10px;color:var(--muted)">${g(r,'society')}</td>
-      <td class="td-mono" style="color:var(--teal)">${g(r,'shopcode')}</td>
-      <td style="font-weight:500">${g(r,'shopname')}</td>
-      <td><span class="badge ${tm==='முழுநேரம்'?'badge-full':'badge-part'}">${tm}</span></td>
-      <td class="td-mono">${g(r,'cards')}</td>
-      <td><span class="badge ${pos==='உள்ளது'?'badge-yes':'badge-no'}">${pos}</span></td>
-      <td style="font-size:10px;color:var(--muted)">${g(r,'building')}</td>
-      <td style="font-size:11px">${g(r,'seller')}</td>
-      <td class="td-mono" style="color:var(--muted);font-size:10px">${g(r,'phone')}</td>
-      <td>${statusBadge}${delBtn}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">தரவு இல்லை</td></tr>';
+    const tbody=document.getElementById('data-tbody');
+  tbody.innerHTML=page.map(r=>makeRow(r)).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">தரவு இல்லை</td></tr>';
   renderPagination();
 }
 
@@ -1345,13 +1356,14 @@ function showReadOnly(rowNum) {
   document.getElementById('edit-modal').classList.add('open');
 }
 
-async function deleteRow(rowNum, shopName) {
-  const reason = prompt(`"${shopName}" — நீக்க காரணம் கூறவும்:\n(Delete reason required)`);
-  if (reason === null) return; // cancelled
+async function deleteRow(rowNum, btn) {
+  const row = allData.find(r => r._row === rowNum);
+  const shopName = row ? g(row,'shopname') : 'Row ' + rowNum;
+  const reason = prompt('"' + shopName + '" — நீக்க காரணம் கூறவும் (Delete reason required):');
+  if (reason === null) return;
   if (!reason.trim()) { alert('காரணம் கட்டாயம் தேவை'); return; }
-  if (!confirm(`"${shopName}" — இந்த பதிவை நிரந்தரமாக நீக்கவா?\n\nகாரணம்: ${reason}`)) return;
+  if (!confirm('"' + shopName + '" — இந்த பதிவை நிரந்தரமாக நீக்கவா?\n\nகாரணம்: ' + reason)) return;
 
-  // Log deletion to audit before deleting
   await sendToScript({
     action: 'deleteRow',
     rowNumber: rowNum,
@@ -1361,13 +1373,11 @@ async function deleteRow(rowNum, shopName) {
     timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
   });
 
-  // Remove from local data
   const idx = allData.findIndex(r => r._row === rowNum);
   if (idx >= 0) allData.splice(idx, 1);
-  // Re-index _row
   allData.forEach((r, i) => r._row = i + 2);
   applyFilters();
-  alert(`✅ "${shopName}" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.`);
+  alert('✅ "' + shopName + '" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.');
 }
 
 function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
