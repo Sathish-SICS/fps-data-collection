@@ -244,8 +244,7 @@ tr:last-child td{border-bottom:none}
       <div class="tuser" id="user-label-badge"></div>
       <button class="btn btn-outline" onclick="exportCSV()" id="btn-csv" style="display:none">CSV</button>
       <button class="btn btn-outline" onclick="loadData()">↻</button>
-      <button class="btn btn-outline" id="btn-settings" onclick="openSettings()" style="display:none">⚙️</button>
-      <button class="btn btn-outline" onclick="doLogout()" style="color:var(--red)">Logout</button>
+      <button class="btn btn-outline" id="btn-logout-placeholder" onclick="doLogout()" style="color:var(--red)">Logout</button>
     </div>
   </div>
 
@@ -602,7 +601,14 @@ function doLogin() {
     document.getElementById('tab-audit').style.display  = '';
     document.getElementById('btn-csv').style.display = '';
     // Settings only for sathish (main master)
-    if (uid === 'sathish') document.getElementById('btn-settings').style.display = '';
+    if (uid === 'sathish') {
+      // Create settings button only for sathish
+      const settingsBtn = document.createElement('button');
+      settingsBtn.className = 'btn btn-outline';
+      settingsBtn.textContent = '⚙️';
+      settingsBtn.onclick = openSettings;
+      document.querySelector('.topbar-right').insertBefore(settingsBtn, document.getElementById('btn-logout-placeholder'));
+    }
   } else {
     roleBadge.textContent = 'Editor';
     roleBadge.className   = 'tbadge tbadge-editor';
@@ -861,7 +867,7 @@ function renderBlock(data){
     const cards=rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
     const blockFinal=finaliseStatus['block:'+block];
     const statusBadge=blockFinal?'<span class="badge badge-final">🔒 Finalised</span>':isBlockOpen(block)?'<span class="badge badge-open">🟢 Open</span>':'<span class="badge badge-locked">🔒 Closed</span>';
-    return `<tr><td>${block}</td><td style="color:var(--muted)">${taluk}</td><td class="td-mono"><b>${cnt}</b></td><td class="td-mono">${full}</td><td class="td-mono">${part}</td><td class="td-mono">${pos}</td><td>${statusBadge}</td><td class="td-mono">${cards.toLocaleString()}</td></tr>`;
+    return `<tr><td>${block}</td><td style="color:var(--muted)">${taluk}</td><td class="td-mono"><b>${cnt}</b></td><td class="td-mono">${full}</td><td class="td-mono">${part}</td><td class="td-mono">${pos}</td><td>${statusBadge}${delBtn}</td><td class="td-mono">${cards.toLocaleString()}</td></tr>`;
   }).join('');
 }
 
@@ -1231,7 +1237,7 @@ function renderDataTable() {
       <td style="font-size:10px;color:var(--muted)">${g(r,'building')}</td>
       <td style="font-size:11px">${g(r,'seller')}</td>
       <td class="td-mono" style="color:var(--muted);font-size:10px">${g(r,'phone')}</td>
-      <td>${statusBadge}</td>
+      <td>${statusBadge}${delBtn}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">தரவு இல்லை</td></tr>';
   renderPagination();
