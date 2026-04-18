@@ -195,6 +195,7 @@ tr:last-child td{border-bottom:none}
 .c-blue{color:var(--blue)}.c-green{color:var(--green)}.c-amber{color:var(--amber)}
 .c-red{color:var(--red)}.c-purple{color:var(--purple)}.c-teal{color:var(--teal)}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -243,6 +244,8 @@ tr:last-child td{border-bottom:none}
       <div class="tbadge" id="user-role-badge"></div>
       <div class="tuser" id="user-label-badge"></div>
       <button class="btn btn-outline" onclick="exportCSV()" id="btn-csv" style="display:none">CSV</button>
+      <button class="btn btn-outline" onclick="exportExcel()" id="btn-excel" style="display:none;color:var(--green);border-color:#3ecf8e44">⬇ Excel</button>
+      <button class="btn btn-outline" onclick="downloadAuditExcel()" id="btn-audit-dl" style="display:none;color:var(--amber);border-color:#f5a62344">⬇ Audit</button>
       <button class="btn btn-outline" onclick="loadData()">↻</button>
       <button class="btn btn-outline" id="btn-logout-placeholder" onclick="doLogout()" style="color:var(--red)">Logout</button>
     </div>
@@ -428,7 +431,9 @@ tr:last-child td{border-bottom:none}
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <div class="card-title" style="margin:0" id="data-count">—</div>
-          <div style="display:flex;gap:8px" id="bulk-actions"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="bulk-actions">
+          <button class="btn btn-outline" onclick="exportExcel()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel Download</button>
+        </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -600,6 +605,8 @@ function doLogin() {
     document.getElementById('tab-access').style.display = '';
     document.getElementById('tab-audit').style.display  = '';
     document.getElementById('btn-csv').style.display = '';
+    document.getElementById('btn-excel').style.display = '';
+    document.getElementById('btn-audit-dl').style.display = '';
     // Settings only for sathish (main master)
     if (uid === 'sathish') {
       // Create settings button only for sathish
@@ -617,6 +624,7 @@ function doLogin() {
     document.getElementById('tab-block').style.display   = 'none';
     document.getElementById('tab-overview').style.display= 'none';
     document.getElementById('editor-hero').style.display='block';
+    document.getElementById('btn-excel').style.display = '';
     document.getElementById('hero-block-name').textContent = cfg.label + ' — ' + (cfg.block||'');
     // Show only hierarchy + data for editors
     switchView('hierarchy');
@@ -1415,6 +1423,61 @@ async function sendToScript(payload) {
 }
 
 // ── EXPORT ─────────────────────────────────────────────────
+// ── EXCEL DOWNLOAD ─────────────────────────────────────────
+function exportExcel() {
+  if (!filteredData.length) { alert('தரவு இல்லை'); return; }
+  const src = currentUser?.role==='editor'
+    ? filteredData.filter(r => (r[COLS.block]||'') === currentUser.block)
+    : filteredData;
+  if (!src.length) { alert('தரவு இல்லை'); return; }
+
+  // Build rows
+  const keys = Object.keys(src[0]).filter(k => k !== '_row');
+  const wsData = [keys, ...src.map(r => keys.map(k => r[k]||''))];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Style header row
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cell = ws[XLSX.utils.encode_cell({r:0, c})];
+    if (cell) cell.s = {fill:{fgColor:{rgb:"1565C0"}},font:{color:{rgb:"FFFFFF"},bold:true}};
+  }
+
+  // Auto column widths
+  ws['!cols'] = keys.map(k => ({wch: Math.max(k.length, 12)}));
+
+  const wb = XLSX.utils.book_new();
+  const sheetName = currentUser?.role==='editor' ? currentUser.block.slice(0,30) : 'FPS_Data';
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  const filename = (currentUser?.role==='editor' ? currentUser.block + '_' : 'FPS_District_') +
+    new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, filename);
+}
+
+// ── AUDIT LOG DOWNLOAD ─────────────────────────────────────
+async function downloadAuditExcel() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/Audit_Log?key=${CONFIG.API_KEY}`;
+  try {
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (!json.values || json.values.length < 2) { alert('Audit data இல்லை'); return; }
+    const ws = XLSX.utils.aoa_to_sheet(json.values);
+    // Style header
+    const headers = json.values[0];
+    headers.forEach((h, c) => {
+      const cell = ws[XLSX.utils.encode_cell({r:0,c})];
+      if (cell) cell.s = {fill:{fgColor:{rgb:"1A1A2E"}},font:{color:{rgb:"FFFFFF"},bold:true}};
+    });
+    ws['!cols'] = headers.map(() => ({wch:20}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Audit_Log');
+    XLSX.writeFile(wb, 'FPS_Audit_Log_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  } catch(e) {
+    alert('Audit log download failed: ' + e.message);
+  }
+}
+
 function exportCSV() {
   if(!filteredData.length){alert('தரவு இல்லை');return;}
   const keys=Object.keys(filteredData[0]).filter(k=>k!=='_row');
