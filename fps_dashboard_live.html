@@ -1222,8 +1222,7 @@ function renderDataTable() {
       editable?'<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>':
       '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
     const delBtn = (editable || currentUser?.role==='master') ?
-      `<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px"
-        onclick="event.stopPropagation();deleteRow(${r._row},'${g(r,'shopname').replace(/'/g,"\\'")}')">🗑</button>` : '';
+      '<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px" onclick="event.stopPropagation();deleteRow(' + r._row + ',\'' + g(r,'shopname').replace(/'/g,"\\'") + '\')">🗑</button>' : '';
     return `<tr style="${rowStyle}" onclick="${editable?'openEdit('+r._row+')':'showReadOnly('+r._row+')'}">
       <td class="td-mono" style="color:var(--muted)">${g(r,'serial')}</td>
       <td style="font-size:10px;color:var(--muted)">${g(r,'taluk')}</td>
