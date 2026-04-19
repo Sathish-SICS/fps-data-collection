@@ -198,7 +198,6 @@ tr:last-child td{border-bottom:none}
 .c-blue{color:var(--blue)}.c-green{color:var(--green)}.c-amber{color:var(--amber)}
 .c-red{color:var(--red)}.c-purple{color:var(--purple)}.c-teal{color:var(--teal)}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -247,8 +246,6 @@ tr:last-child td{border-bottom:none}
       <div class="tbadge" id="user-role-badge"></div>
       <div class="tuser" id="user-label-badge"></div>
       <button class="btn btn-outline" onclick="exportCSV()" id="btn-csv" style="display:none">CSV</button>
-      <button class="btn btn-outline" onclick="exportExcel()" id="btn-excel" style="display:none;color:var(--green);border-color:#3ecf8e44">⬇ Excel</button>
-      <button class="btn btn-outline" onclick="downloadAuditExcel()" id="btn-audit-dl" style="display:none;color:var(--amber);border-color:#f5a62344">⬇ Audit</button>
       <button class="btn btn-outline" onclick="loadData()">↻</button>
       <button class="btn btn-outline" id="btn-logout-placeholder" onclick="doLogout()" style="color:var(--red)">Logout</button>
     </div>
@@ -277,7 +274,7 @@ tr:last-child td{border-bottom:none}
 
         <!-- நேர வகை group -->
         <div style="background:var(--bg2);border:1px solid #4f8ef744;border-radius:12px;padding:14px">
-          <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ முழுநேரம் - பகுதிநேரம்</div>
+          <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ நேர வகை</div>
           <div style="display:flex;gap:10px">
             <div style="flex:1;text-align:center">
               <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full">—</div>
@@ -313,7 +310,7 @@ tr:last-child td{border-bottom:none}
 
         <!-- நகர்/கிராமம் group -->
         <div style="background:var(--bg2);border:1px solid #a78bfa44;border-radius:12px;padding:14px">
-          <div style="font-size:10px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏘 இடப்பகுதி</div>
+          <div style="font-size:10px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏘 பகுதி வகை</div>
           <div style="display:flex;gap:10px">
             <div style="flex:1;text-align:center">
               <div style="font-size:22px;font-weight:700;color:var(--blue);font-family:'DM Mono',monospace" id="s-urban">—</div>
@@ -351,14 +348,38 @@ tr:last-child td{border-bottom:none}
 
     <!-- OVERVIEW -->
     <div id="view-overview" class="active">
-      <!-- Hidden elements for JS compatibility -->
-      <svg style="display:none">
-        <circle id="d-full"/><circle id="d-part"/>
-        <circle id="d-urban"/><circle id="d-rural"/>
-        <text id="d-center"></text>
-      </svg>
-      <span style="display:none" id="leg-full"></span><span style="display:none" id="leg-part"></span>
-      <span style="display:none" id="leg-urban"></span><span style="display:none" id="leg-rural"></span>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">முழுநேரம் vs பகுதிநேரம்</div>
+          <div class="donut-wrap">
+            <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#1e2333" stroke-width="16"/>
+              <circle id="d-full" cx="55" cy="55" r="40" fill="none" stroke="#4f8ef7" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+              <circle id="d-part" cx="55" cy="55" r="40" fill="none" stroke="#f5a623" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+              <text x="55" y="51" text-anchor="middle" font-family="DM Mono" font-size="16" font-weight="700" fill="#e8eaf2" id="d-center">0</text>
+              <text x="55" y="65" text-anchor="middle" font-family="DM Sans" font-size="9" fill="#7a8099">shops</text>
+            </svg>
+            <div style="flex:1">
+              <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7"></div>முழுநேரம்<span class="legend-val" id="leg-full">0</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>பகுதிநேரம்<span class="legend-val" id="leg-part">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">நகர்புறம் / கிராமபுறம்</div>
+          <div class="donut-wrap">
+            <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#1e2333" stroke-width="16"/>
+              <circle id="d-urban" cx="55" cy="55" r="40" fill="none" stroke="#4f8ef7" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+              <circle id="d-rural" cx="55" cy="55" r="40" fill="none" stroke="#3ecf8e" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+            </svg>
+            <div style="flex:1">
+              <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7"></div>நகர்புறம்<span class="legend-val" id="leg-urban">0</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#3ecf8e"></div>கிராமபுறம்<span class="legend-val" id="leg-rural">0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="grid3">
         <div class="card"><div class="card-title">கட்டிட வகை</div><div id="b-building"></div></div>
         <div class="card"><div class="card-title">Agency Group</div><div id="b-agency"></div></div>
@@ -434,10 +455,7 @@ tr:last-child td{border-bottom:none}
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <div class="card-title" style="margin:0" id="data-count">—</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="bulk-actions">
-          <button class="btn btn-outline" onclick="exportExcel()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel</button>
-          <button class="btn btn-outline" onclick="exportCSV()" style="font-size:11px">⬇ CSV</button>
-        </div>
+          <div style="display:flex;gap:8px" id="bulk-actions"></div>
         </div>
         <div class="table-wrap">
           <table>
@@ -608,18 +626,8 @@ function doLogin() {
     roleBadge.className   = 'tbadge tbadge-master';
     document.getElementById('tab-access').style.display = '';
     document.getElementById('tab-audit').style.display  = '';
+    // settings btn only for sathish
     document.getElementById('btn-csv').style.display = '';
-    document.getElementById('btn-excel').style.display = '';
-    document.getElementById('btn-audit-dl').style.display = '';
-    // Settings only for sathish (main master)
-    if (uid === 'sathish') {
-      // Create settings button only for sathish
-      const settingsBtn = document.createElement('button');
-      settingsBtn.className = 'btn btn-outline';
-      settingsBtn.textContent = '⚙️';
-      settingsBtn.onclick = openSettings;
-      document.querySelector('.topbar-right').insertBefore(settingsBtn, document.getElementById('btn-logout-placeholder'));
-    }
   } else {
     roleBadge.textContent = 'Editor';
     roleBadge.className   = 'tbadge tbadge-editor';
@@ -627,8 +635,8 @@ function doLogin() {
     document.getElementById('tab-taluk').style.display   = 'none';
     document.getElementById('tab-block').style.display   = 'none';
     document.getElementById('tab-overview').style.display= 'none';
+    document.getElementById('stats-section').style.display='none';
     document.getElementById('editor-hero').style.display='block';
-    document.getElementById('btn-excel').style.display = '';
     document.getElementById('hero-block-name').textContent = cfg.label + ' — ' + (cfg.block||'');
     // Show only hierarchy + data for editors
     switchView('hierarchy');
@@ -707,12 +715,7 @@ async function loadData() {
     const ts = new Date().toLocaleTimeString('en-IN');
     document.getElementById('topbar-sub').textContent =
       (currentUser?.role==='editor' ? currentUser.block + ' — ' : '') +
-      displayData.length + ' பதிவுகள் — ' + ts + ' | v20260418_1305';
-
-    // Initialize filteredData for editors too
-    if (currentUser?.role==='editor') {
-      filteredData = allData.filter(r => g(r,'block') === currentUser.block);
-    }
+      displayData.length + ' பதிவுகள் — ' + ts;
 
     // Fill hero for editors
     if (currentUser?.role==='editor') {
@@ -743,15 +746,8 @@ async function loadData() {
     renderBlock(displayData);
     renderHierarchy(displayData);
     applyFilters();
-    // Auto-expand block for editors
-    if (currentUser?.role==='editor' && currentUser.block) {
-      expandedBlock = currentUser.block;
-      renderHierarchy(displayData);
-    }
     if (currentUser?.role === 'master') { loadAudit(); renderAccessControl(); }
     updateEditorNotice();
-    // Always populate filteredData so CSV/Excel export works immediately
-    applyFilters();
   } catch(e) {
     document.getElementById('topbar-sub').textContent = 'Error: ' + e.message;
   }
@@ -891,7 +887,7 @@ function renderBlock(data){
     const cards=rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
     const blockFinal=finaliseStatus['block:'+block];
     const statusBadge=blockFinal?'<span class="badge badge-final">🔒 Finalised</span>':isBlockOpen(block)?'<span class="badge badge-open">🟢 Open</span>':'<span class="badge badge-locked">🔒 Closed</span>';
-    return `<tr><td>${block}</td><td style="color:var(--muted)">${taluk}</td><td class="td-mono"><b>${cnt}</b></td><td class="td-mono">${full}</td><td class="td-mono">${part}</td><td class="td-mono">${pos}</td><td>${statusBadge}${delBtn}</td><td class="td-mono">${cards.toLocaleString()}</td></tr>`;
+    return `<tr><td>${block}</td><td style="color:var(--muted)">${taluk}</td><td class="td-mono"><b>${cnt}</b></td><td class="td-mono">${full}</td><td class="td-mono">${part}</td><td class="td-mono">${pos}</td><td>${statusBadge}</td><td class="td-mono">${cards.toLocaleString()}</td></tr>`;
   }).join('');
 }
 
@@ -918,73 +914,57 @@ function toggleBlockExpand(block, event) {
 
 function renderHierarchy(data) {
   const container = document.getElementById('hierarchy-container');
+  // Build tree: district → taluks → blocks → societies
   const taluks = [...new Set(data.map(r=>g(r,'taluk')).filter(Boolean))].sort();
 
-  // Build District node
   let html = `
-  <div style="display:flex;flex-direction:column;align-items:center;min-width:800px;padding-bottom:20px">
-
+  <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:900px">
     <!-- District -->
-    <div class="h-node h-district" onclick="showHierarchyDetail('district','திருவண்ணாமலை மாவட்டம்')"
-      style="padding:14px 28px;font-size:14px">
+    <div class="h-node h-district" onclick="showHierarchyDetail('district','திருவண்ணாமலை மாவட்டம்')">
       🏛️ திருவண்ணாமலை மாவட்டம்
-      <div style="font-size:11px;opacity:.8;margin-top:3px">${data.length} கடைகள்</div>
+      <div style="font-size:10px;opacity:.8;margin-top:2px">${data.length} கடைகள்</div>
     </div>
+    <div class="h-line-v"></div>
 
-    <!-- Connector to taluks -->
-    <div style="width:1px;height:24px;background:var(--border)"></div>
-    <div style="position:relative;width:100%">
-      <div style="position:absolute;top:0;left:10%;right:10%;height:1px;background:var(--border)"></div>
-    </div>
+    <!-- Taluks row -->
+    <div style="display:flex;gap:0;align-items:flex-start;position:relative;width:100%">
+      <!-- Horizontal line spanning all taluks -->
+      <div style="position:absolute;top:0;left:5%;right:5%;height:1px;background:var(--border)"></div>
+  `;
 
-    <!-- Taluk row -->
-    <div style="display:flex;gap:20px;justify-content:center;flex-wrap:nowrap;width:100%;padding:0 10px">`;
-
-  taluks.forEach(taluk => {
+  taluks.forEach((taluk, ti) => {
     const talukRows = data.filter(r=>g(r,'taluk')===taluk);
     const blocks = [...new Set(talukRows.map(r=>g(r,'block')).filter(Boolean))].sort();
+    const isLast = ti === taluks.length - 1;
 
-    html += `<div style="display:flex;flex-direction:column;align-items:center;gap:0">
-      <!-- Connector down to taluk -->
-      <div style="width:1px;height:20px;background:var(--border)"></div>
-
-      <!-- Taluk box -->
+    html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:0 4px">
+      <div class="h-line-v" style="height:20px"></div>
       <div class="h-node h-taluk" onclick="showHierarchyDetail('taluk','${taluk}')"
-        style="font-size:10px;padding:6px 10px;white-space:nowrap">
-        ${taluk}<br><span style="font-size:9px;opacity:.7">${talukRows.length}</span>
+        style="font-size:10px;padding:6px 10px;margin-bottom:0">
+        ${taluk}<div style="font-size:9px;opacity:.7">${talukRows.length}</div>
       </div>
-
-      <!-- Connector to blocks -->
-      <div style="width:1px;height:14px;background:var(--border)"></div>
-      <div style="position:relative;width:100%;min-width:${blocks.length*90}px">
-        ${blocks.length>1?`<div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--border)"></div>`:''}
-      </div>
-
-      <!-- Blocks row -->
-      <div style="display:flex;gap:8px;justify-content:center">`;
+      <div class="h-line-v" style="height:16px"></div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;position:relative">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--border)"></div>`;
 
     blocks.forEach(block => {
       const blockRows = talukRows.filter(r=>g(r,'block')===block);
-      const isFinal   = finaliseStatus['block:'+block];
-      const isOpen    = isBlockOpen(block);
-      const isExp     = expandedBlock === block;
-      const borderCol = isFinal?'#a78bfa44':isOpen?'#3ecf8e44':'#f0606044';
-      const textCol   = isFinal?'var(--purple)':isOpen?'var(--green)':'var(--red)';
-      const icon      = isFinal?'🔒':isOpen?'🟢':'🔒';
-
-      html += `<div style="display:flex;flex-direction:column;align-items:center">
-        <div style="width:1px;height:12px;background:var(--border)"></div>
-        <div class="h-node" onclick="toggleBlockExpand('${block}',event)"
-          style="font-size:9px;padding:5px 8px;border:1px solid ${borderCol};
-                 color:${textCol};background:${isExp?'#f5a62318':'var(--bg3)'};
-                 border-radius:8px;cursor:pointer;text-align:center;min-width:70px;
-                 ${isExp?'border-color:var(--amber);':''}">
-          ${block.replace('திருவண்ணாமலை','TVM').replace('  ',' ')}<br>
-          <span style="font-size:8px;opacity:.8">${blockRows.length} ${icon}</span>
-          <span style="font-size:8px;color:var(--amber)">${isExp?' ▲':' ▼'}</span>
+      const isFinal = finaliseStatus['block:'+block];
+      const isOpen  = isBlockOpen(block);
+      const cls = isFinal ? 'locked-block' : isOpen ? 'open-block' : '';
+      html += (() => {
+      const isExpanded = expandedBlock === block;
+      return `<div style="display:flex;flex-direction:column;align-items:center">
+        <div class="h-line-v" style="height:14px"></div>
+        <div class="h-node h-block ${cls}" onclick="toggleBlockExpand('${block}', event)"
+          style="font-size:10px;padding:5px 8px;${isExpanded?'border-color:var(--amber);background:#f5a62318;':''}">
+          ${block.replace('திருவண்ணாமலை','TVM')}<br>
+          <span style="font-size:9px;opacity:.7">${blockRows.length} ${isFinal?'🔒':isOpen?'🟢':'🔒'}</span>
+          <span style="font-size:9px;color:var(--amber)">${isExpanded?' ▲':' ▼'}</span>
         </div>
-        ${isExp ? renderSocietiesUnder(blockRows, block) : ''}
+        ${isExpanded ? renderSocietiesUnder(blockRows, block) : ''}
       </div>`;
+    })();
     });
 
     html += `</div></div>`;
@@ -992,15 +972,45 @@ function renderHierarchy(data) {
 
   html += `</div></div>`;
 
-  // Legend
-  html += `<div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:12px">
-    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#3ecf8e22;border:1px solid #3ecf8e44"></div>திறந்துள்ளது</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#f0606022;border:1px solid #f0606044"></div>மூடப்பட்டுள்ளது</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><div style="width:10px;height:10px;border-radius:3px;background:#a78bfa22;border:1px solid #a78bfa44"></div>Finalised</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">▼ Click block to expand societies</div>
+  html += `
+  <div style="margin-top:16px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #3ecf8e44;background:var(--bg3)"></div> Block திறந்துள்ளது
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #f0606044;background:var(--bg3)"></div> Block மூடப்பட்டுள்ளது
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #a78bfa44;background:var(--bg3)"></div> Finalised
+    </div>
   </div>`;
 
   container.innerHTML = html;
+}
+
+function renderSocietiesUnder(blockRows, blockName) {
+  const societies = [...new Set(blockRows.map(r=>g(r,'society')).filter(Boolean))].sort();
+  if (!societies.length) return '';
+  const cols = Math.min(societies.length, 4);
+  return `<div style="margin-top:8px;position:relative">
+    <div style="width:1px;height:12px;background:var(--border);margin:0 auto"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:400px;position:relative">
+      <div style="position:absolute;top:0;left:10%;right:10%;height:1px;background:var(--border)"></div>
+      ${societies.map(soc => {
+        const cnt = blockRows.filter(r=>g(r,'society')===soc).length;
+        const isFinal = finaliseStatus['society:'+soc];
+        return `<div style="display:flex;flex-direction:column;align-items:center">
+          <div style="width:1px;height:10px;background:var(--border)"></div>
+          <div class="h-node h-society ${isFinal?'finalised':''}"
+            style="font-size:9px;padding:4px 7px;cursor:pointer"
+            onclick="showHierarchyDetail('society','${soc}')">
+            ${soc.length>12?soc.slice(0,12)+'..':soc}<br>
+            <span style="opacity:.7">${cnt} கடைகள் ${isFinal?'🔒':''}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 }
 
 function showHierarchyDetail(level, name) {
@@ -1181,13 +1191,12 @@ function populateSel(id,items,ph){
 }
 
 function applyFilters() {
-  const q   = (document.getElementById('search')?.value||'').toLowerCase();
-  const tal = document.getElementById('f-taluk')?.value||'';
-  const blk = document.getElementById('f-block')?.value||'';
-  const soc = document.getElementById('f-society')?.value||'';
-  const pos = document.getElementById('f-pos')?.value||'';
-  const tm  = document.getElementById('f-time')?.value||'';
-  // Editors always see only their block — regardless of filters
+  const q   = document.getElementById('search').value.toLowerCase();
+  const tal = document.getElementById('f-taluk').value;
+  const blk = document.getElementById('f-block').value;
+  const soc = document.getElementById('f-society').value;
+  const pos = document.getElementById('f-pos').value;
+  const tm  = document.getElementById('f-time').value;
   const src = currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData;
   filteredData = src.filter(r=>{
     if(tal && g(r,'taluk')!==tal)   return false;
@@ -1207,42 +1216,6 @@ function clearFilters() {
   applyFilters();
 }
 
-
-function makeRow(r) {
-  const pos = g(r,'pos'), tm = g(r,'timetype');
-  const editable = canEditRow(r);
-  const rowStyle = editable ? 'cursor:pointer' : 'cursor:default;opacity:.8';
-  const socFinal = finaliseStatus['society:'+g(r,'society')];
-  const blkFinal = finaliseStatus['block:'+g(r,'block')];
-  let statusBadge;
-  if (blkFinal) statusBadge = '<span class="badge badge-final" style="font-size:9px">🔒B</span>';
-  else if (socFinal) statusBadge = '<span class="badge badge-final" style="font-size:9px">🔒S</span>';
-  else if (editable) statusBadge = '<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>';
-  else statusBadge = '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
-
-  let delBtnHtml = '';
-  if (editable || currentUser?.role === 'master') {
-    delBtnHtml = '<button class="badge" style="background:#f0606022;color:var(--red);border:1px solid #f0606040;font-size:9px;cursor:pointer;padding:2px 6px;margin-left:4px" onclick="event.stopPropagation();deleteRow(' + r._row + ',this)">🗑</button>';
-  }
-
-  const clickFn = editable ? 'openEdit(' + r._row + ')' : 'showReadOnly(' + r._row + ')';
-  return '<tr style="' + rowStyle + '" onclick="' + clickFn + '">' +
-    '<td class="td-mono" style="color:var(--muted)">' + g(r,'serial') + '</td>' +
-    '<td style="font-size:10px;color:var(--muted)">' + g(r,'taluk') + '</td>' +
-    '<td style="font-size:11px">' + g(r,'block') + '</td>' +
-    '<td style="font-size:10px;color:var(--muted)">' + g(r,'society') + '</td>' +
-    '<td class="td-mono" style="color:var(--teal)">' + g(r,'shopcode') + '</td>' +
-    '<td style="font-weight:500">' + g(r,'shopname') + '</td>' +
-    '<td><span class="badge ' + (tm==='முழுநேரம்'?'badge-full':'badge-part') + '">' + tm + '</span></td>' +
-    '<td class="td-mono">' + g(r,'cards') + '</td>' +
-    '<td><span class="badge ' + (pos==='உள்ளது'?'badge-yes':'badge-no') + '">' + pos + '</span></td>' +
-    '<td style="font-size:10px;color:var(--muted)">' + g(r,'building') + '</td>' +
-    '<td style="font-size:11px">' + g(r,'seller') + '</td>' +
-    '<td class="td-mono" style="color:var(--muted);font-size:10px">' + g(r,'phone') + '</td>' +
-    '<td>' + statusBadge + delBtnHtml + '</td>' +
-    '</tr>';
-}
-
 function renderDataTable() {
   const start=(currentPage-1)*PAGE_SIZE;
   const page=filteredData.slice(start,start+PAGE_SIZE);
@@ -1257,8 +1230,47 @@ function renderDataTable() {
       : `<span class="badge badge-final">🔒 Block Finalised — திருத்த முடியாது</span>`;
   } else { bulkActions.innerHTML=''; }
 
-    const tbody=document.getElementById('data-tbody');
-  tbody.innerHTML=page.map(r=>makeRow(r)).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">தரவு இல்லை</td></tr>';
+  const tbody=document.getElementById('data-tbody');
+  tbody.innerHTML=page.map(r=>{
+    const pos=g(r,'pos'),tm=g(r,'timetype');
+    const editable=canEditRow(r);
+    const rowStyle=editable?'cursor:pointer':'cursor:default;opacity:.8';
+    const socFinal=finaliseStatus['society:'+g(r,'society')];
+    const blkFinal=finaliseStatus['block:'+g(r,'block')];
+    const statusBadge=blkFinal?'<span class="badge badge-final" style="font-size:9px">🔒B</span>':
+      socFinal?'<span class="badge badge-final" style="font-size:9px">🔒S</span>':
+      editable?'<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>':
+      '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
+    return `<tr style="${rowStyle}" onclick="${editable?'openEdit('+r._row+')':'showReadOnly('+r._row+')'}">
+      <td class="td-mono" style="color:var(--muted)">${g(r,'serial')}</td>
+      <td style="font-size:10px;color:var(--muted)">${g(r,'taluk')}</td>
+      <td style="font-size:11px">${g(r,'block')}</td>
+      <td style="font-size:10px;color:var(--muted)">${g(r,'society')}</td>
+      <td class="td-mono" style="color:var(--teal)">${g(r,'shopcode')}</td>
+      <td style="font-weight:500">${g(r,'shopname')}</td>
+      <td><span class="badge ${tm==='முழுநேரம்'?'badge-full':'badge-part'}">${tm}</span></td>
+      <td class="td-mono">${g(r,'cards')}</td>
+      <td><span class="badge ${pos==='உள்ளது'?'badge-yes':'badge-no'}">${pos}</span></td>
+      <td style="font-size:10px;color:var(--muted)">${g(r,'building')}</td>
+      <td style="font-size:11px">${g(r,'seller')}</td>
+      <td class="td-mono" style="color:var(--muted);font-size:10px">${g(r,'phone')}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">தரவு இல்லை</td></tr>';
+  // Add delete buttons safely after render
+  document.querySelectorAll('#data-tbody tr').forEach((tr, i) => {
+    const r = page[i];
+    if (!r) return;
+    if (canEditRow(r) || currentUser?.role === 'master') {
+      const lastTd = tr.querySelector('td:last-child');
+      const btn = document.createElement('button');
+      btn.textContent = '🗑';
+      btn.title = 'நீக்கு';
+      btn.style.cssText = 'margin-left:4px;background:#f0606022;color:#f06060;border:1px solid #f0606040;border-radius:6px;font-size:9px;cursor:pointer;padding:2px 6px';
+      btn.onclick = function(e) { e.stopPropagation(); deleteRow(r._row); };
+      lastTd.appendChild(btn);
+    }
+  });
   renderPagination();
 }
 
@@ -1276,42 +1288,14 @@ function renderPagination() {
 function goPage(p){currentPage=p;renderDataTable();}
 
 // ── EDIT MODAL ─────────────────────────────────────────────
-// Dropdown options for edit fields
-const EDIT_DROPDOWNS = {
-  'ஒன்றியம்': ["அனக்காவூர்","ஆரணி  கிழக்கு","ஆரணி மேற்கு","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்","செங்கம்","செய்யார்","சேத்துப்பட்டு","ஜமுனாமரத்துர்","தண்டராம்பட்டு","திருவண்ணாமலை 1","திருவண்ணாமலை 2","திருவண்ணாமலை HQ","துரிஞ்சாபுரம்","தெள்ளார்","புதுப்பாளையம்","பெரணமல்லூர்","போளுர்","வந்தவாசி","வெம்பாக்கம்  1","வெம்பாக்கம்  2"],
-  'வட்டம்': ["Arani (Tk)","Chengam (Tk)","Chetpet","Cheyyar (Tk)","Jamunamarathur","Kalasapakkam(Tk)","Kilpennathur","Polur (Tk)","Thandrampattu","Thiruvannamalai (Tk)","Vandavasi (Tk)","Vembakkam"],
-  'முழுநேரம் / பகுதிநேரம்': ["முழுநேரம்","பகுதிநேரம்"],
-  'PoS இயந்திரம் உள்ளதா?': ["உள்ளது","இல்லை"],
-  'கட்டிட வகை': ["சொந்தம்","அரசு இலவசம்","அரசு வாடகை","தனியார் வாடகை","தனியார் இலவசம்"],
-  'நகர்புறம் / கிராமபுறம்': ["நகர்புறம்","கிராமபுறம்"],
-  'Agency Group': ["Cooperative","SHG","TNCSC"],
-  'கிடங்கு': ["திருவண்ணாமலை","கீழ்பென்னாத்தூர்","புதுப்பாளையம்","தண்டராம்பட்டு","போளூர்","போளூர் (ஜவ்வாது மலைகள்)","எலத்தூர்","ஆரணி","தச்சம்பாடி","செய்யார்","வந்தவாசி","வெம்பாக்கம்"],
-  'சட்டமன்ற தொகுதி': ["ஆரணி","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்","செங்கம்","செய்யார்","திருவண்ணாமலை","போளுர்","வந்தவாசி"],
-  'பாராளுமன்ற தொகுதி': ["திருவண்ணாமலை","ஆரணி"],
-  'கூட்டுறவு நிறுவனம்': ["அக்ராபாளையம்","அத்திமுர்","அனக்காவூர்","அன்மருதை","அரடாப்பட்டு","அரட்டவாடி","அரியப்பாடி","அருக்காவூர்","அரையாளம்","அழகானந்தல்","ஆக்கூர்","ஆதனூர்","ஆத்துரை","ஆரணி","ஆரணி சிஎம்எஸ்","ஆரணி வைகை கூட்டுறவு பண்டகசாலை","ஆருத்திராபட்டு","ஆர்ப்பாக்கம்","ஆலத்துர்","ஆவூர்","இசுக்குழிக்காட்டேரி","இராதாபுரம்","இளங்காடு","எடத்தனுர்","எம்.வி.நல்லூர்","எஸ் வி நகரம்","எஸ் வி நல்லூர்","ஏ.டி.மங்கலம்","ஓசூர்","கடலாடி","கண்ணமங்கலம்","கமலபுத்துர்","கலசபாக்கம்","களம்பூர்","காஞ்சி","காட்டாம்பூண்டி","காரப்பட்டு","காழியூர் புளியரம்பாக்கம்","கீரனுர்","கீழ்கொடுங்காலூர்","கீழ்நர்மா","கீழ்ப்பென்னாத்துர்","குப்பநத்தம்","குப்பம்","குயிலம்","கே.ப்பி.புதூர்","கே.மடம்","கேட்டவரம்பாளையம்","கேளுர்","கொருக்கை","கொழப்பலூர்","கோட்டுப்பாக்கம்","சந்தவாசல்","சாத்தனுர்","சாலவேடு","சித்தாத்தூர்","சிறுநாத்துர்","சு.காட்டேரி","சுனைப்பட்டு","செ.சொர்ப்பனந்தல்","செ.நாச்சிப்பட்டு","செங்கம்","செங்கம் சி.எம்.எஸ்","செங்காடு","செய்யார் சி.எம்.எஸ்","சேத்துப்பட்டு","சொரகொளத்துர்","சோமாசிப்பாடி","ஜமுனாமரத்துர்","டி,கல்லேரி","டி.என்.ஐ.காரியந்தல்","டி.எம்.எஸ்.மங்கலம்","தச்சம்பட்டு","தச்சம்பாடி","தண்டராம்பட்டு","தண்டரை","தண்டலம்","தலையாம்பள்ளம்","தானிப்பாடி","தி.மா.நு.கூ.மொ.வி.ப.சாலை","திருப்பனங்காடு","திருவண்ணாமலை","திருவண்ணாமலை வே.உ.கூ.வி.சங்கம்","திருவத்திபுரம்","தூசி","தெண்பூண்டிப்பட்டு","தென்கரும்பலுர்","தென்கழனி","தெய்யார்","தெள்ளார்","தெள்ளார்   சி.எம்.எஸ்","தேசூர்","தேத்துறை","தேவிகாபுரம்","தேவிகாபுரம் பண்டகசாலை -1","நம்மியம்பட்டு","நயம்பாடி","நல்லவன்பாளையம்","நல்லூர்","நாடழகானந்தல்","நாயுடுமங்கலம்","நாராயணகுப்பம்","நார்த்தாம்பூண்டி","நாவல்பாக்கம்","நீப்பத்துறை","நெடுங்குணம்","நெடும்பிறை","படவேடு","பனைஓலைப்பாடி","பரமனந்தல்","பல்லி","பழையனுர்","பாச்சல்","பாடகம்","பிரம்மதேசம்","பில்லுர்","புதுப்பாளையம்","புரிசை","பெரணமல்லூர்","பெரியஓலைப்பாடி","பெரியகல்லபாடி","பெரியகிளாம்பாடி","பெரியகோளாப்பாடி","பெறுந்துறைப்பட்டு","பேராயம்பட்டு","பைங்கினர்","போளுர்","போளுர் சி.எம்.எஸ்","மங்கலம்","மட்டதாரி","மண்டகொளத்துர்","மருதாடு","மல்லவாடி","மழையூர்","மாங்கால்","மாம்பட்டு","மாரியநல்லுர்","முளகிரிப்பட்டு","முள்ளண்டிபுரம்","மேக்களுர்","மேனல்லூர்","மேலத்தாங்கல்","மேல்நகர்","மேல்பள்ளிப்பட்டு","மேல்புழுதியூர்","மேல்முடியனுர்","மேல்ராவந்தவாடி","மொடையூர்","மோசவாடி","மோரணம்","ராந்தம்","ரெட்டியார்பாளையம்","வடநாங்கூர்","வடமாதிமங்கலம்","வடமாத்துர்","வடவணக்கம்பாடி","வந்தவாசி","வந்தவாசி கூட்டுறவு பண்டகசாலை","வந்தவாசி சி.எம்.எஸ்","வல்லம்","வள்ளிவாகை","வழுர்","வானாபுரம்","வாழ்குடை","விண்ணமங்கலம்","வீரளுர்","வெம்பாக்கம்","வேங்கிக்கால்","வேட்டவலம்","வேலப்பாடி"]
-};
-
 const EDIT_FIELDS=[
-  ['shopname','நியாய விலைக் கடையின் பெயர்'],
-  ['shopcode','கடை குறியீடு எண்'],
-  ['society','கூட்டுறவு நிறுவனம்'],
-  ['block','ஒன்றியம்'],
-  ['taluk','வட்டம்'],
-  ['mla','சட்டமன்ற தொகுதி'],
-  ['mp','பாராளுமன்ற தொகுதி'],
-  ['agency','Agency Group'],
-  ['timetype','முழுநேரம் / பகுதிநேரம்'],
-  ['cards','குடும்ப அட்டைகள் எண்ணிக்கை'],
-  ['pos','PoS இயந்திரம் உள்ளதா?'],
-  ['posother','தாய்க்கடை PoS குறியீட்டு எண்'],
-  ['building','கட்டிட வகை'],
-  ['buildingname','கட்டடத்தின் பெயர்'],
-  ['seller','விற்பனையாளர் பெயர்'],
-  ['phone','விற்பனையாளர் கைபேசி எண்'],
-  ['area','நகர்புறம் / கிராமபுறம்'],
-  ['godown','கிடங்கு'],
-  ['opendays','திறந்து செயல்படும் நாட்கள்'],
-  ['remarks','குறிப்பு']
+  ['shopname','நியாய விலைக் கடையின் பெயர்'],['shopcode','கடை குறியீடு எண்'],
+  ['block','ஒன்றியம்'],['taluk','வட்டம்'],['timetype','முழுநேரம் / பகுதிநேரம்'],
+  ['cards','குடும்ப அட்டைகள் எண்ணிக்கை'],['pos','PoS இயந்திரம் உள்ளதா?'],
+  ['posother','தாய்க்கடை PoS குறியீட்டு எண்'],['building','கட்டிட வகை'],
+  ['buildingname','கட்டடத்தின் பெயர்'],['seller','விற்பனையாளர் பெயர்'],
+  ['phone','விற்பனையாளர் கைபேசி எண்'],['area','நகர்புறம் / கிராமபுறம்'],
+  ['godown','கிடங்கு'],['remarks','குறிப்பு']
 ];
 
 function openEdit(rowNum) {
@@ -1321,22 +1305,22 @@ function openEdit(rowNum) {
   document.getElementById('modal-title-text').textContent=g(row,'shopname')+' — '+g(row,'shopcode');
   document.getElementById('modal-locked-notice').style.display='none';
   const fields=document.getElementById('modal-fields');
-  fields.innerHTML=EDIT_FIELDS.map(([key,col])=>{
-    const colKey = COLS[key] || col;
-    const val = (row[colKey]||'').toString().trim();
-    const opts = EDIT_DROPDOWNS[colKey];
-    if (opts) {
-      return `<div class="modal-field"><label>${colKey}</label>
-        <select id="ef-${key}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit">
-          ${opts.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
-        </select></div>`;
-    }
-    return `<div class="modal-field"><label>${colKey}</label>
-      <input id="ef-${key}" value="${val.replace(/"/g,'&quot;')}"></div>`;
-  }).join('');
+  fields.innerHTML=EDIT_FIELDS.map(([key,label])=>`
+    <div class="modal-field"><label>${label}</label>
+    <input id="ef-${key}" value="${(g(row,key)||'').replace(/"/g,'&quot;')}"></div>`).join('');
   const actions=document.getElementById('modal-actions');
 
-   actions.innerHTML=`
+  // Society finalise button (visible to editors for their society)
+  const society=g(row,'society');
+  const socFinal=finaliseStatus['society:'+society];
+  const showSocBtn = currentUser?.role==='master' ||
+    (currentUser?.role==='editor' && isBlockOpen(currentUser.block));
+  const socBtn = showSocBtn
+    ? `<button class="btn ${socFinal?'btn-red':'btn-amber'}" onclick="toggleFinaliseSociety('${society}','')">${socFinal?'🔓 Society Unlock':'🔒 Society Finalise'}</button>`
+    : '';
+
+  actions.innerHTML=`
+    ${socBtn}
     <button class="btn btn-outline" onclick="closeModal()">ரத்து</button>
     <button class="btn btn-green" onclick="saveEdit()">சேமி ✓</button>`;
   document.getElementById('edit-modal').classList.add('open');
@@ -1356,28 +1340,24 @@ function showReadOnly(rowNum) {
   document.getElementById('edit-modal').classList.add('open');
 }
 
-async function deleteRow(rowNum, btn) {
+async function deleteRow(rowNum) {
   const row = allData.find(r => r._row === rowNum);
-  const shopName = row ? g(row,'shopname') : 'Row ' + rowNum;
-  const reason = prompt('"' + shopName + '" — நீக்க காரணம் கூறவும் (Delete reason required):');
+  const shopName = row ? (row['நியாய விலைக் கடையின் பெயர்'] || 'Row ' + rowNum) : 'Row ' + rowNum;
+  const reason = prompt('"' + shopName + '" — நீக்க காரணம் கூறவும்:');
   if (reason === null) return;
   if (!reason.trim()) { alert('காரணம் கட்டாயம் தேவை'); return; }
-  if (!confirm('"' + shopName + '" — இந்த பதிவை நிரந்தரமாக நீக்கவா?\n\nகாரணம்: ' + reason)) return;
-
+  if (!confirm('"' + shopName + '" — நிரந்தரமாக நீக்கவா? காரணம்: ' + reason)) return;
   await sendToScript({
-    action: 'deleteRow',
-    rowNumber: rowNum,
-    shopName: shopName,
-    reason: reason,
+    action: 'deleteRow', rowNumber: rowNum,
+    shopName: shopName, reason: reason,
     editor: currentUser.label,
     timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
   });
-
   const idx = allData.findIndex(r => r._row === rowNum);
   if (idx >= 0) allData.splice(idx, 1);
   allData.forEach((r, i) => r._row = i + 2);
   applyFilters();
-  alert('✅ "' + shopName + '" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.');
+  alert('"' + shopName + '" நீக்கப்பட்டது. Audit Log-ல் பதிவு செய்யப்பட்டது.');
 }
 
 function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
@@ -1389,12 +1369,9 @@ async function saveEdit() {
   const changes=[];
   EDIT_FIELDS.forEach(([key,col])=>{
     const el=document.getElementById('ef-'+key);
-    if(!el) return;
-    const newVal = el.value.trim();
-    const oldVal = (row[COLS[key]]||row[col]||'').toString().trim();
-    if(newVal !== oldVal) {
-      changes.push({col: COLS[key]||col, old:oldVal, new:newVal});
-      if(COLS[key]) row[COLS[key]]=newVal; else row[col]=newVal;
+    if(el && el.value.trim()!==g(row,key)) {
+      changes.push({col, old:g(row,key), new:el.value.trim()});
+      row[col]=el.value.trim();
     }
   });
   if(!changes.length){closeModal();return;}
@@ -1434,65 +1411,9 @@ async function sendToScript(payload) {
 }
 
 // ── EXPORT ─────────────────────────────────────────────────
-// ── EXCEL DOWNLOAD ─────────────────────────────────────────
-function exportExcel() {
-  // Use filteredData if available, otherwise fall back to allData
-  const baseData = filteredData.length ? filteredData : allData;
-  const src = currentUser?.role==='editor'
-    ? baseData.filter(r => g(r,'block') === currentUser.block)
-    : baseData;
-  if (!src.length) { alert('தரவு இல்லை — முதலில் data load ஆகட்டும்'); return; }
-
-  // Build rows
-  const keys = Object.keys(src[0]).filter(k => k !== '_row');
-  const wsData = [keys, ...src.map(r => keys.map(k => r[k]||''))];
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Style header row
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    const cell = ws[XLSX.utils.encode_cell({r:0, c})];
-    if (cell) cell.s = {fill:{fgColor:{rgb:"1565C0"}},font:{color:{rgb:"FFFFFF"},bold:true}};
-  }
-
-  // Auto column widths
-  ws['!cols'] = keys.map(k => ({wch: Math.max(k.length, 12)}));
-
-  const wb = XLSX.utils.book_new();
-  const sheetName = currentUser?.role==='editor' ? currentUser.block.slice(0,30) : 'FPS_Data';
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-  const filename = (currentUser?.role==='editor' ? currentUser.block + '_' : 'FPS_District_') +
-    new Date().toISOString().slice(0,10) + '.xlsx';
-  XLSX.writeFile(wb, filename);
-}
-
-// ── AUDIT LOG DOWNLOAD ─────────────────────────────────────
-async function downloadAuditExcel() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/Audit_Log?key=${CONFIG.API_KEY}`;
-  try {
-    const res  = await fetch(url);
-    const json = await res.json();
-    if (!json.values || json.values.length < 2) { alert('Audit data இல்லை'); return; }
-    const ws = XLSX.utils.aoa_to_sheet(json.values);
-    // Style header
-    const headers = json.values[0];
-    headers.forEach((h, c) => {
-      const cell = ws[XLSX.utils.encode_cell({r:0,c})];
-      if (cell) cell.s = {fill:{fgColor:{rgb:"1A1A2E"}},font:{color:{rgb:"FFFFFF"},bold:true}};
-    });
-    ws['!cols'] = headers.map(() => ({wch:20}));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Audit_Log');
-    XLSX.writeFile(wb, 'FPS_Audit_Log_' + new Date().toISOString().slice(0,10) + '.xlsx');
-  } catch(e) {
-    alert('Audit log download failed: ' + e.message);
-  }
-}
-
 function exportCSV() {
   const exportData = filteredData.length ? filteredData : allData;
-  if(!exportData.length){alert('தரவு இல்லை — முதலில் Refresh செய்யவும்');return;}
+  if(!exportData.length){alert('தரவு இல்லை');return;}
   filteredData = exportData;
   const keys=Object.keys(filteredData[0]).filter(k=>k!=='_row');
   const rows=[keys.join(','),...filteredData.map(r=>keys.map(k=>`"${(r[k]||'').replace(/"/g,'""')}"`).join(','))];
