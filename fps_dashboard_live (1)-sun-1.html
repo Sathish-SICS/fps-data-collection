@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPS Dashboard — Thiruvannamalai</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#0f1117;--bg2:#181c27;--bg3:#1e2333;--border:#2a3045;
+  --text:#e8eaf2;--muted:#7a8099;
+  --blue:#4f8ef7;--green:#3ecf8e;--amber:#f5a623;--red:#f06060;
+  --purple:#a78bfa;--teal:#2dd4bf;--pink:#f472b6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:radial-gradient(ellipse at 50% 0%,#1e2a4a 0%,var(--bg) 60%)}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,.4)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo h1{font-size:20px;font-weight:700;color:var(--text);line-height:1.4}
+.login-logo p{font-size:12px;color:var(--muted);margin-top:6px}
+.login-logo .emblem{width:52px;height:52px;background:linear-gradient(135deg,#1565c0,#4f8ef7);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px}
+.form-field{margin-bottom:16px}
+.form-field label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.form-field input{width:100%;background:var(--bg3);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;transition:border-color .2s}
+.form-field input:focus{outline:none;border-color:var(--blue)}
+.login-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s;margin-top:4px}
+.login-btn:hover{background:#6b9ff9}
+.login-error{background:#f0606018;border:1px solid #f0606040;color:var(--red);border-radius:8px;padding:10px 12px;font-size:12px;margin-top:12px;display:none;text-align:center}
+
+/* APP */
+#app-screen{display:none}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:10px}
+.topbar-left h1{font-size:13px;font-weight:700}
+.topbar-left p{font-size:11px;color:var(--muted);margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tbadge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+.tbadge-master{background:#3ecf8e22;border:1px solid #3ecf8e44;color:var(--green)}
+.tbadge-editor{background:#4f8ef722;border:1px solid #4f8ef744;color:var(--blue)}
+.tbadge-locked{background:#f0606022;border:1px solid #f0606044;color:var(--red)}
+.tbadge-open{background:#3ecf8e22;border:1px solid #3ecf8e44;color:var(--green)}
+.tuser{background:#a78bfa22;border:1px solid #a78bfa44;color:var(--purple);font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+.btn{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s}
+.btn-outline{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-outline:hover{color:var(--text);border-color:var(--muted)}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:#6b9ff9}
+.btn-green{background:var(--green);color:#000;font-weight:700}
+.btn-green:hover{background:#5af0a8}
+.btn-red{background:#f0606022;color:var(--red);border:1px solid #f0606040}
+.btn-red:hover{background:#f0606044}
+.btn-amber{background:#f5a62322;color:var(--amber);border:1px solid #f5a62340}
+
+/* CONTAINER */
+.container{max-width:1400px;margin:0 auto;padding:16px 20px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.stat-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.stat-value{font-size:24px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* TABS */
+.tabs{display:flex;gap:3px;background:var(--bg2);padding:4px;border-radius:10px;border:1px solid var(--border);width:fit-content;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);border:none;background:none;font-family:inherit;transition:all .15s;white-space:nowrap}
+.tab.active{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-sub{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* BAR */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.bar-label{font-size:11px;color:var(--muted);width:120px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;background:var(--bg3);border-radius:4px;height:18px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .6s ease;display:flex;align-items:center;padding-left:6px}
+.bar-count{font-size:10px;font-weight:600;color:rgba(255,255,255,.9);font-family:'DM Mono',monospace}
+.bar-pct{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;width:34px;text-align:right;flex-shrink:0}
+
+/* DONUT */
+.donut-wrap{display:flex;align-items:center;gap:16px}
+.legend-item{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-size:12px;color:var(--muted)}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.legend-val{margin-left:auto;font-family:'DM Mono',monospace;font-weight:500;color:var(--text)}
+
+/* FILTERS */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-select{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;cursor:pointer}
+.search-box{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;width:180px}
+.search-box::placeholder{color:var(--muted)}
+.search-box:focus,.filter-select:focus{outline:none;border-color:var(--blue)}
+.filter-clear{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+.filter-clear:hover{color:var(--red);border-color:var(--red)}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--bg3);color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--text)}
+td{padding:8px 10px;border-bottom:1px solid #1e2333;color:var(--text);vertical-align:middle}
+tr:hover td{background:var(--bg3)}
+tr:last-child td{border-bottom:none}
+.td-mono{font-family:'DM Mono',monospace}
+.badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:600}
+.badge-yes{background:#3ecf8e22;color:var(--green)}
+.badge-no{background:#f0606022;color:var(--red)}
+.badge-full{background:#4f8ef722;color:var(--blue)}
+.badge-part{background:#f5a62322;color:var(--amber)}
+.badge-locked{background:#f0606022;color:var(--red);border:1px solid #f0606040}
+.badge-open{background:#3ecf8e22;color:var(--green);border:1px solid #3ecf8e40}
+.badge-final{background:#a78bfa22;color:var(--purple);border:1px solid #a78bfa40}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-field label{display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit}
+.modal-field input:focus,.modal-field select:focus{outline:none;border-color:var(--blue)}
+.modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+
+/* HIERARCHY CHART */
+.hierarchy{overflow-x:auto;padding:10px 0}
+.h-level{display:flex;gap:12px;justify-content:center;margin-bottom:0;position:relative}
+.h-connector{display:flex;justify-content:center;position:relative;height:24px}
+.h-connector::before{content:'';position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--border)}
+.h-node{border-radius:10px;padding:8px 14px;font-size:11px;font-weight:600;text-align:center;cursor:pointer;transition:all .2s;position:relative;white-space:nowrap;border:1px solid transparent}
+.h-node:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.h-district{background:linear-gradient(135deg,#1565c0,#4f8ef7);color:#fff;font-size:13px;padding:12px 24px;border-radius:12px}
+.h-taluk{background:var(--bg3);border:1px solid #4f8ef744;color:var(--blue)}
+.h-block{background:var(--bg3);border:1px solid #3ecf8e44;color:var(--green)}
+.h-block.locked-block{border-color:#f0606044;color:var(--red)}
+.h-block.open-block{border-color:#3ecf8e44;color:var(--green)}
+.h-society{background:var(--bg3);border:1px solid #a78bfa44;color:var(--purple)}
+.h-society.finalised{border-color:#f5a62344;color:var(--amber)}
+.h-shop{background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:10px;padding:5px 10px}
+.h-branch{display:flex;flex-direction:column;align-items:center;gap:0}
+.h-children{display:flex;gap:8px;justify-content:center;position:relative;padding-top:0}
+.h-children::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:var(--border)}
+.h-tree{display:flex;flex-direction:column;align-items:center}
+.h-line-v{width:1px;height:20px;background:var(--border);margin:0 auto}
+.h-line-h-wrap{display:flex;align-items:flex-start;position:relative}
+.h-children-wrap{display:flex;gap:16px}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle}
+
+/* ACCESS CONTROL */
+.access-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.access-row:last-child{border-bottom:none}
+.access-block-name{font-size:12px;font-weight:500;min-width:160px}
+.access-status{font-size:11px}
+.access-datetime{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:11px;font-family:inherit;cursor:pointer}
+.access-datetime:focus{outline:none;border-color:var(--blue)}
+.toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.toggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:.3s}
+.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.3s}
+.toggle-switch input:checked+.toggle-slider{background:#3ecf8e22;border-color:#3ecf8e}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(20px);background:var(--green)}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:6px;margin-top:12px;justify-content:flex-end}
+.page-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace}
+.page-btn:hover,.page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* AUDIT */
+.audit-item{padding:10px 0;border-bottom:1px solid var(--border)}
+.audit-item:last-child{border-bottom:none}
+.audit-meta{font-size:10px;color:var(--muted);margin-bottom:4px;display:flex;gap:10px;flex-wrap:wrap}
+.audit-old{color:var(--red);text-decoration:line-through;font-family:'DM Mono',monospace;font-size:11px}
+.audit-new{color:var(--green);font-family:'DM Mono',monospace;font-size:11px}
+
+/* SESSION EXPIRED */
+.overlay-full{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:300;align-items:center;justify-content:center;text-align:center}
+.overlay-full.show{display:flex}
+.overlay-box{background:var(--bg2);border:1px solid var(--red);border-radius:16px;padding:36px;max-width:380px}
+
+/* VIEWS */
+#view-overview,#view-hierarchy,#view-taluk,#view-block,#view-data,#view-access,#view-audit{display:none}
+#view-overview.active,#view-hierarchy.active,#view-taluk.active,#view-block.active,#view-data.active,#view-access.active,#view-audit.active{display:block}
+
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+.notice-bar{border-radius:8px;padding:8px 12px;font-size:11px;margin-bottom:12px;line-height:1.6}
+.notice-locked{background:#f0606018;border:1px solid #f0606040;color:var(--red)}
+.notice-open{background:#3ecf8e18;border:1px solid #3ecf8e40;color:var(--green)}
+.c-blue{color:var(--blue)}.c-green{color:var(--green)}.c-amber{color:var(--amber)}
+.c-red{color:var(--red)}.c-purple{color:var(--purple)}.c-teal{color:var(--teal)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="emblem">🏛️</div>
+      <h1>நியாய விலைக் கடை<br>தரவு கட்டுப்பாட்டு மையம்</h1>
+      <p>திருவண்ணாமலை மாவட்டம் — பொதுவிநியோக துறை</p>
+    </div>
+    <div class="form-field">
+      <label>பயனர் ID</label>
+      <input type="text" id="login-user" placeholder="username" autocomplete="off" autocapitalize="none"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    </div>
+    <div class="form-field">
+      <label>கடவுச்சொல்</label>
+      <input type="password" id="login-pass" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">உள்நுழை →</button>
+    <div class="login-error" id="login-error">தவறான பயனர் ID அல்லது கடவுச்சொல்</div>
+  </div>
+</div>
+
+<!-- SESSION EXPIRED -->
+<div class="overlay-full" id="session-expired">
+  <div class="overlay-box">
+    <div style="font-size:36px;margin-bottom:12px">⏱</div>
+    <h2 style="color:var(--red);font-size:18px;margin-bottom:10px">திருத்த நேரம் முடிந்தது</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:20px">உங்கள் திருத்த சாளரம் மூடப்பட்டது. மீண்டும் login செய்யவும்.</p>
+    <button class="login-btn" onclick="forceLogout()">மீண்டும் உள்நுழை</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>FPS Dashboard — Thiruvannamalai</h1>
+      <p id="topbar-sub">Loading...</p>
+    </div>
+    <div class="topbar-right">
+      <div class="tbadge" id="edit-window-badge" style="display:none"></div>
+      <div class="tbadge" id="user-role-badge"></div>
+      <div class="tuser" id="user-label-badge"></div>
+      <button class="btn btn-outline" onclick="exportCSV()" id="btn-csv" style="display:none">CSV</button>
+      <button class="btn btn-outline" onclick="loadData()">↻</button>
+      <button class="btn btn-outline" id="btn-logout-placeholder" onclick="doLogout()" style="color:var(--red)">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- STATS (hidden for editors who see only their block) -->
+    <div id="stats-section">
+      <!-- Total -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="stat-card" style="flex:1;min-width:140px">
+          <div class="stat-label">மொத்த கடைகள்</div>
+          <div class="stat-value c-blue" id="s-total">—</div>
+          <div class="stat-sub">சேகரிக்கப்பட்டவை</div>
+        </div>
+        <div class="stat-card" style="flex:1;min-width:140px">
+          <div class="stat-label">மொத்த அட்டைகள்</div>
+          <div class="stat-value c-purple" id="s-cards">—</div>
+          <div class="stat-sub">குடும்பங்கள்</div>
+        </div>
+      </div>
+
+      <!-- Grouped boxes row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px">
+
+        <!-- நேர வகை group -->
+        <div style="background:var(--bg2);border:1px solid #4f8ef744;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ நேர வகை</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">முழுநேரம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-full-pct"></div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--amber);font-family:'DM Mono',monospace" id="s-part">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">பகுதிநேரம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-part-pct"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PoS group -->
+        <div style="background:var(--bg2);border:1px solid #3ecf8e44;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📟 PoS இயந்திரம்</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--teal);font-family:'DM Mono',monospace" id="s-pos">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">உள்ளது</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-pos-pct"></div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace" id="s-nopos">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">இல்லை</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-nopos-pct"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- நகர்/கிராமம் group -->
+        <div style="background:var(--bg2);border:1px solid #a78bfa44;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏘 பகுதி வகை</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--blue);font-family:'DM Mono',monospace" id="s-urban">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">நகர்புறம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-urban-pct"></div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-rural">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">கிராமபுறம்</div>
+              <div style="font-size:10px;color:var(--muted)" id="s-rural-pct"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- கட்டிட வகை group -->
+        <div style="background:var(--bg2);border:1px solid #f5a62344;border-radius:12px;padding:14px">
+          <div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏠 கட்டிட வகை</div>
+          <div id="s-building-group" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs" id="main-tabs">
+      <button class="tab active" onclick="switchView('overview')" id="tab-overview">Overview</button>
+      <button class="tab" onclick="switchView('hierarchy')" id="tab-hierarchy">📊 இதுவரை பதிவு செய்யப்பட்டுள்ளவற்றின் விவரம்</button>
+      <button class="tab" onclick="switchView('taluk')" id="tab-taluk">Taluk</button>
+      <button class="tab" onclick="switchView('block')" id="tab-block">Block</button>
+      <button class="tab" onclick="switchView('data')" id="tab-data">✏️ தரவுகளை மாற்றுவதற்கு</button>
+      <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access Control</button>
+      <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">Audit</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div id="view-overview" class="active">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">முழுநேரம் vs பகுதிநேரம்</div>
+          <div class="donut-wrap">
+            <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#1e2333" stroke-width="16"/>
+              <circle id="d-full" cx="55" cy="55" r="40" fill="none" stroke="#4f8ef7" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+              <circle id="d-part" cx="55" cy="55" r="40" fill="none" stroke="#f5a623" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+              <text x="55" y="51" text-anchor="middle" font-family="DM Mono" font-size="16" font-weight="700" fill="#e8eaf2" id="d-center">0</text>
+              <text x="55" y="65" text-anchor="middle" font-family="DM Sans" font-size="9" fill="#7a8099">shops</text>
+            </svg>
+            <div style="flex:1">
+              <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7"></div>முழுநேரம்<span class="legend-val" id="leg-full">0</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>பகுதிநேரம்<span class="legend-val" id="leg-part">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">நகர்புறம் / கிராமபுறம்</div>
+          <div class="donut-wrap">
+            <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#1e2333" stroke-width="16"/>
+              <circle id="d-urban" cx="55" cy="55" r="40" fill="none" stroke="#4f8ef7" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+              <circle id="d-rural" cx="55" cy="55" r="40" fill="none" stroke="#3ecf8e" stroke-width="16" stroke-dasharray="0 251" stroke-dashoffset="63" style="transition:stroke-dasharray .8s"/>
+            </svg>
+            <div style="flex:1">
+              <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7"></div>நகர்புறம்<span class="legend-val" id="leg-urban">0</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#3ecf8e"></div>கிராமபுறம்<span class="legend-val" id="leg-rural">0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="card"><div class="card-title">கட்டிட வகை</div><div id="b-building"></div></div>
+        <div class="card"><div class="card-title">Agency Group</div><div id="b-agency"></div></div>
+        <div class="card"><div class="card-title">கிடங்கு</div><div id="b-godown"></div></div>
+      </div>
+    </div>
+
+    <!-- HIERARCHY -->
+    <div id="view-hierarchy">
+      <div class="card">
+        <div class="card-title">மாவட்டம் → வட்டம் → ஒன்றியம் → கடை படிநிலை</div>
+        <div class="card-sub">ஒரு node-ஐ click செய்தால் அந்த level-ன் விவரங்கள் காண்பிக்கப்படும்</div>
+        <div id="hierarchy-container" style="overflow-x:auto;padding:10px 0"></div>
+      </div>
+      <div class="card" id="hierarchy-detail" style="display:none">
+        <div class="card-title" id="hd-title">விவரங்கள்</div>
+        <div id="hd-content"></div>
+      </div>
+    </div>
+
+    <!-- TALUK -->
+    <div id="view-taluk">
+      <div class="card">
+        <div class="card-title">வட்டம்வாரியான கடைகள்</div>
+        <div id="b-taluk"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">வட்டம்வாரியான அட்டவணை</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>வட்டம்</th><th>மொத்தம்</th><th>முழுநேரம்</th><th>பகுதிநேரம்</th><th>PoS உள்ளது</th><th>மொத்த அட்டைகள்</th></tr></thead>
+          <tbody id="taluk-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- BLOCK -->
+    <div id="view-block">
+      <div class="filters">
+        <span style="font-size:12px;color:var(--muted)">வட்டம்:</span>
+        <select class="filter-select" id="block-taluk-filter" onchange="renderBlock()"><option value="">எல்லாம்</option></select>
+      </div>
+      <div class="card"><div class="card-title">ஒன்றியம்வாரியான கடைகள்</div><div id="b-block"></div></div>
+      <div class="card">
+        <div class="card-title">ஒன்றியம்வாரியான அட்டவணை</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ஒன்றியம்</th><th>வட்டம்</th><th>மொத்தம்</th><th>முழுநேரம்</th><th>பகுதிநேரம்</th><th>PoS உள்ளது</th><th>Block நிலை</th><th>மொத்த அட்டைகள்</th></tr></thead>
+          <tbody id="block-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div id="view-data">
+      <div id="editor-notice" style="display:none"></div>
+    <div id="editor-hero" style="display:none;background:linear-gradient(135deg,#1a2a1a,#0f2010);border:1px solid #3ecf8e44;border-radius:12px;padding:16px 20px;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--green);margin-bottom:4px">நியாய விலைக் கடை — தரவு சரிபார்ப்பு மற்றும் திருத்தம்</div>
+      <div style="font-size:12px;color:var(--muted)" id="hero-block-name"></div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap" id="hero-stats"></div>
+    </div>
+      <div class="filters" id="data-filters">
+        <input class="search-box" type="text" id="search" placeholder="கடை / குறியீடு தேடவும்..." oninput="applyFilters()">
+        <select class="filter-select" id="f-taluk" onchange="applyFilters()"><option value="">எல்லா வட்டமும்</option></select>
+        <select class="filter-select" id="f-block" onchange="applyFilters()"><option value="">எல்லா ஒன்றியமும்</option></select>
+        <select class="filter-select" id="f-society" onchange="applyFilters()"><option value="">எல்லா நிறுவனமும்</option></select>
+        <select class="filter-select" id="f-pos" onchange="applyFilters()">
+          <option value="">PoS (எல்லாம்)</option><option value="உள்ளது">PoS உள்ளது</option><option value="இல்லை">PoS இல்லை</option>
+        </select>
+        <select class="filter-select" id="f-time" onchange="applyFilters()">
+          <option value="">நேர வகை (எல்லாம்)</option><option value="முழுநேரம்">முழுநேரம்</option><option value="பகுதிநேரம்">பகுதிநேரம்</option>
+        </select>
+        <button class="filter-clear" onclick="clearFilters()">✕</button>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div class="card-title" style="margin:0" id="data-count">—</div>
+          <div style="display:flex;gap:8px" id="bulk-actions"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>வட்டம்</th><th>ஒன்றியம்</th><th>நிறுவனம்</th><th>குறியீடு</th><th>கடை பெயர்</th>
+              <th>நேர வகை</th><th>அட்டைகள்</th><th>PoS</th><th>கட்டிடம்</th><th>விற்பனையாளர்</th><th>கைபேசி</th><th style="color:var(--amber);font-weight:700">✏️ திருத்தம் செய்</th>
+            </tr></thead>
+            <tbody id="data-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <!-- ACCESS CONTROL (master only) -->
+    <div id="view-access">
+      <div class="card">
+        <div class="card-title">🔑 திருத்த சாளர கட்டுப்பாடு</div>
+        <div class="card-sub">ஒவ்வொரு block-க்கும் திருத்த நேரத்தை இங்கே நிர்ணயிக்கவும். இது Google Sheet-லும் update ஆகும்.</div>
+        <div id="access-rows"></div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-green" onclick="saveAccessControl()">✓ அனைத்தையும் சேமி → Sheet Update</button>
+          <button class="btn btn-amber" onclick="openAllBlocks()">🔓 அனைத்தையும் திற</button>
+          <button class="btn btn-red" onclick="closeAllBlocks()">🔒 அனைத்தையும் மூடு</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔒 Block மற்றும் Society Finalise நிலை</div>
+        <div class="card-sub">Finalise செய்யப்பட்ட blocks/societies-ஐ unlock செய்ய master அனுமதி தேவை</div>
+        <div id="finalise-status-rows"></div>
+      </div>
+    </div>
+
+    <!-- AUDIT -->
+    <div id="view-audit">
+      <div class="card">
+        <div class="card-title">திருத்த வரலாறு</div>
+        <div class="card-sub">கடைசி 100 மாற்றங்கள்</div>
+        <div id="audit-list"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">தரவு திருத்தம்</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-locked-notice" style="display:none;background:#f0606018;border:1px solid #f0606040;color:var(--red);border-radius:8px;padding:8px 12px;font-size:11px;margin-bottom:12px">
+      🔒 இந்த பதிவு finalised — திருத்த master அனுமதி தேவை
+    </div>
+    <div class="modal-grid" id="modal-fields"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="max-width:800px">
+    <div class="modal-title">
+      <span>⚙️ Settings — Credentials</span>
+      <button class="modal-close" onclick="document.getElementById('settings-modal').classList.remove('open')">✕</button>
+    </div>
+    <div style="max-height:420px;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr>
+          <th style="background:var(--bg3);color:var(--muted);padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Username</th>
+          <th style="background:var(--bg3);color:var(--muted);padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Password</th>
+          <th style="background:var(--bg3);color:var(--muted);padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Role</th>
+          <th style="background:var(--bg3);color:var(--muted);padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">Block</th>
+        </tr></thead>
+        <tbody id="settings-users-table"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;padding:10px 12px;background:#4f8ef718;border:1px solid #4f8ef740;border-radius:8px;font-size:11px;color:var(--blue)">
+      ⚠️ Credentials மாற்றங்கள் இந்த browser session-ல் மட்டுமே. நிரந்தரமாக மாற்ற HTML file edit செய்யவும்.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('settings-modal').classList.remove('open')">மூடு</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURATION
+// ============================================================
+const CONFIG = {
+  SHEET_ID: "1jrC_dfH5pnKMFrkSbn2GY0CqcsXqfhTrZzckbqkV4Eg",
+  API_KEY:  "AIzaSyD5sjGuEqmO-pT-CW0k3IvFkWRodXZFwGo",
+  SHEET_NAME: "FPS_Data",
+  ACCESS_SHEET: "Access_Control",
+  FINALISE_SHEET: "Finalise_Status",
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycby84wmWpECuWIuMKl3hDIn8PXGs9Hli8Rqe76zlUSF5c-JMmJ5EykoDzobOHRA_syjMng/exec",
+  USERS: {
+    "sathish": { password: "Sathish@DR#2026", role: "master", label: "Sathish — Office of Deputy Registrar", block: null },
+    "superintendent": { password: "Supt@PDS#2026", role: "master", label: "PDS Superintendent", block: null },
+    "deputyregistrar": { password: "DR@Office#2026", role: "master", label: "Deputy Registrar — Office Head", block: null },
+    "anakavoor": { password: "Anak@2026#fps", role: "editor", label: "Anakavoor Block", block: "அனக்காவூர்" },
+    "arani_east": { password: "ArEast@2026#fps", role: "editor", label: "Arani East Block", block: "ஆரணி  கிழக்கு" },
+    "arani_west": { password: "ArWest@2026#fps", role: "editor", label: "Arani West Block", block: "ஆரணி மேற்கு" },
+    "kalasapakkam": { password: "Kala@2026#fps", role: "editor", label: "Kalasapakkam Block", block: "கலசபாக்கம்" },
+    "kilpennathur": { password: "Kilp@2026#fps", role: "editor", label: "Kilpennathur Block", block: "கீழ்ப்பென்னாத்துர்" },
+    "chengam": { password: "Chen@2026#fps", role: "editor", label: "Chengam Block", block: "செங்கம்" },
+    "cheyyar": { password: "Chey@2026#fps", role: "editor", label: "Cheyyar Block", block: "செய்யார்" },
+    "chetpet": { password: "Chtp@2026#fps", role: "editor", label: "Chetpet Block", block: "சேத்துப்பட்டு" },
+    "jamunamarathur": { password: "Jamu@2026#fps", role: "editor", label: "Jamunamarathur Block", block: "ஜமுனாமரத்துர்" },
+    "thandrampet": { password: "Thand@2026#fps", role: "editor", label: "Thandrampet Block", block: "தண்டராம்பட்டு" },
+    "tvmalai1": { password: "TVM1@2026#fps", role: "editor", label: "Tiruvannamalai 1 Block", block: "திருவண்ணாமலை 1" },
+    "tvmalai2": { password: "TVM2@2026#fps", role: "editor", label: "Tiruvannamalai 2 Block", block: "திருவண்ணாமலை 2" },
+    "tvmalai_hq": { password: "TVMHQ@2026#fps", role: "editor", label: "Tiruvannamalai HQ Block", block: "திருவண்ணாமலை HQ" },
+    "thurinjapuram": { password: "Thuri@2026#fps", role: "editor", label: "Thurinjapuram Block", block: "துரிஞ்சாபுரம்" },
+    "thellar": { password: "Thell@2026#fps", role: "editor", label: "Thellar Block", block: "தெள்ளார்" },
+    "pudhupalayam": { password: "Pudhu@2026#fps", role: "editor", label: "Pudhupalayam Block", block: "புதுப்பாளையம்" },
+    "pernamallur": { password: "Perna@2026#fps", role: "editor", label: "Pernamallur Block", block: "பெரணமல்லூர்" },
+    "polur": { password: "Polu@2026#fps", role: "editor", label: "Polur Block", block: "போளுர்" },
+    "vandavasi": { password: "Vanda@2026#fps", role: "editor", label: "Vandavasi Block", block: "வந்தவாசி" },
+    "vembakkam1": { password: "Vemb1@2026#fps", role: "editor", label: "Vembakkam 1 Block", block: "வெம்பாக்கம்  1" },
+    "vembakkam2": { password: "Vemb2@2026#fps", role: "editor", label: "Vembakkam 2 Block", block: "வெம்பாக்கம்  2" }
+  }
+};
+
+// ── STATE ──────────────────────────────────────────────────
+let allData = [], filteredData = [], auditLog = [];
+let accessControl = {};  // block -> {open: bool, from: datetime, to: datetime}
+let finaliseStatus = {}; // "block:BlockName" -> bool, "society:SocietyName" -> bool
+let currentUser = null;
+let currentPage = 1;
+const PAGE_SIZE = 50;
+let sortCol = '', sortDir = 1;
+let editRowNum = -1;
+
+const COLS = {
+  serial:'வ. எண்', taluk:'வட்டம்', block:'ஒன்றியம்', mla:'சட்டமன்ற தொகுதி',
+  mp:'பாராளுமன்ற தொகுதி', agency:'Agency Group', society:'கூட்டுறவு நிறுவனம்',
+  area:'நகர்புறம் / கிராமபுறம்', shopcode:'கடை குறியீடு எண்',
+  shopname:'நியாய விலைக் கடையின் பெயர்', timetype:'முழுநேரம் / பகுதிநேரம்',
+  cards:'குடும்ப அட்டைகள் எண்ணிக்கை', opendays:'திறந்து செயல்படும் நாட்கள்',
+  pos:'PoS இயந்திரம் உள்ளதா?', posother:'தாய்க்கடை PoS குறியீட்டு எண்',
+  building:'கட்டிட வகை', buildingname:'கட்டடத்தின் பெயர்',
+  seller:'விற்பனையாளர் பெயர்', phone:'விற்பனையாளர் கைபேசி எண்',
+  remarks:'குறிப்பு', godown:'கிடங்கு'
+};
+
+function g(row, k) { return (row[COLS[k]] || '').toString().trim(); }
+
+// ── LOGIN ──────────────────────────────────────────────────
+function doLogin() {
+  const uid  = document.getElementById('login-user').value.trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  const cfg  = CONFIG.USERS[uid];
+  if (!cfg || cfg.password !== pass) {
+    document.getElementById('login-error').style.display = 'block';
+    return;
+  }
+  currentUser = { id: uid, ...cfg };
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display   = 'block';
+  document.getElementById('user-label-badge').textContent = cfg.label;
+
+  const roleBadge = document.getElementById('user-role-badge');
+  if (cfg.role === 'master') {
+    roleBadge.textContent = '∞ Master';
+    roleBadge.className   = 'tbadge tbadge-master';
+    document.getElementById('tab-access').style.display = '';
+    document.getElementById('tab-audit').style.display  = '';
+    // settings btn only for sathish
+    document.getElementById('btn-csv').style.display = '';
+  } else {
+    roleBadge.textContent = 'Editor';
+    roleBadge.className   = 'tbadge tbadge-editor';
+    // Hide master-only tabs
+    document.getElementById('tab-taluk').style.display   = 'none';
+    document.getElementById('tab-block').style.display   = 'none';
+    document.getElementById('tab-overview').style.display= 'none';
+    document.getElementById('stats-section').style.display='none';
+    document.getElementById('editor-hero').style.display='block';
+    document.getElementById('hero-block-name').textContent = cfg.label + ' — ' + (cfg.block||'');
+    // Show only hierarchy + data for editors
+    switchView('hierarchy');
+  }
+  loadData();
+  loadAccessControl();
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+function forceLogout() {
+  document.getElementById('session-expired').classList.remove('show');
+  doLogout();
+}
+
+// ── EDITING PERMISSION CHECK ───────────────────────────────
+function canEditRow(row) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'master') return true;
+  // Editor: must be their block AND window must be open AND not finalised
+  const block = g(row, 'block');
+  if (block !== currentUser.block) return false;
+  const ac = accessControl[block];
+  if (!ac || !ac.open) return false;
+  // Check time window
+  const now = new Date();
+  if (ac.from && new Date(ac.from) > now) return false;
+  if (ac.to   && new Date(ac.to)   < now) return false;
+  // Check block finalised
+  if (finaliseStatus['block:' + block]) return false;
+  // Check society finalised
+  const society = g(row, 'society');
+  if (finaliseStatus['society:' + society]) return false;
+  return true;
+}
+
+function isBlockOpen(block) {
+  if (currentUser?.role === 'master') return true;
+  const ac = accessControl[block];
+  if (!ac || !ac.open) return false;
+  const now = new Date();
+  if (ac.from && new Date(ac.from) > now) return false;
+  if (ac.to   && new Date(ac.to)   < now) return false;
+  return true;
+}
+
+// ── LOAD DATA ──────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('topbar-sub').textContent = 'Loading...';
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(CONFIG.SHEET_NAME)}?key=${CONFIG.API_KEY}`;
+  try {
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (!json.values || json.values.length < 2) {
+      document.getElementById('topbar-sub').textContent = 'தரவு இல்லை — Sheet ID / API Key சரிபார்க்கவும்';
+      return;
+    }
+    const headers = json.values[0];
+    allData = json.values.slice(1).map((row, i) => {
+      const obj = { _row: i + 2 };
+      headers.forEach((h, j) => obj[h.trim()] = (row[j] || '').trim());
+      return obj;
+    }).filter(r => Object.values(r).some(v => v && v !== '_row'));
+
+    // For editors — filter to their block only
+    const displayData = currentUser?.role === 'editor'
+      ? allData.filter(r => g(r,'block') === currentUser.block)
+      : allData;
+
+    const ts = new Date().toLocaleTimeString('en-IN');
+    document.getElementById('topbar-sub').textContent =
+      (currentUser?.role==='editor' ? currentUser.block + ' — ' : '') +
+      displayData.length + ' பதிவுகள் — ' + ts;
+
+    // Fill hero for editors
+    if (currentUser?.role==='editor') {
+      const heroStats = document.getElementById('hero-stats');
+      if (heroStats) {
+        const full = displayData.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+        const part = displayData.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+        const pos  = displayData.filter(r=>g(r,'pos')==='உள்ளது').length;
+        const cards= displayData.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+        heroStats.innerHTML = [
+          ['கடைகள்', displayData.length, '#4f8ef7'],
+          ['முழுநேரம்', full, '#3ecf8e'],
+          ['பகுதிநேரம்', part, '#f5a623'],
+          ['PoS உள்ளது', pos, '#2dd4bf'],
+          ['அட்டைகள்', cards.toLocaleString(), '#a78bfa']
+        ].map(([label,val,color])=>`
+          <div style="background:var(--bg3);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px">
+            <div style="font-size:18px;font-weight:700;color:${color};font-family:'DM Mono',monospace">${val}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${label}</div>
+          </div>`).join('');
+      }
+    }
+
+    updateStats(displayData);
+    populateFilters(displayData);
+    renderOverview(displayData);
+    renderTaluk(displayData);
+    renderBlock(displayData);
+    renderHierarchy(displayData);
+    applyFilters();
+    if (currentUser?.role === 'master') { loadAudit(); renderAccessControl(); }
+    updateEditorNotice();
+  } catch(e) {
+    document.getElementById('topbar-sub').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function loadAccessControl() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(CONFIG.ACCESS_SHEET)}?key=${CONFIG.API_KEY}`;
+  try {
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (!json.values || json.values.length < 2) return;
+    const headers = json.values[0];
+    json.values.slice(1).forEach(row => {
+      const obj = {};
+      headers.forEach((h,i) => obj[h] = row[i] || '');
+      if (obj.Block) accessControl[obj.Block] = {
+        open: obj.Open === 'TRUE' || obj.Open === 'true' || obj.Open === '1',
+        from: obj.From || '',
+        to:   obj.To   || ''
+      };
+    });
+    // Load finalise status
+    await loadFinaliseStatus();
+    updateEditorNotice();
+    if (currentUser?.role === 'master') renderAccessControl();
+  } catch(e) { /* Access_Control sheet not created yet — ok */ }
+}
+
+async function loadFinaliseStatus() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(CONFIG.FINALISE_SHEET)}?key=${CONFIG.API_KEY}`;
+  try {
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (!json.values || json.values.length < 2) return;
+    json.values.slice(1).forEach(row => {
+      if (row[0] && row[1]) finaliseStatus[row[0] + ':' + row[1]] = row[2] === 'TRUE' || row[2] === '1';
+    });
+  } catch(e) {}
+}
+
+function updateEditorNotice() {
+  if (currentUser?.role !== 'editor') return;
+  const block = currentUser.block;
+  const notice = document.getElementById('editor-notice');
+  const ewBadge = document.getElementById('edit-window-badge');
+  if (isBlockOpen(block)) {
+    const ac = accessControl[block];
+    let msg = '✅ தரவுகளை திருத்தம் செய்வதற்க்கு அனுமதிக்கப்பட்டுள்ளது';
+    if (ac?.to) msg += ' — ' + new Date(ac.to).toLocaleString('en-IN');
+    notice.innerHTML = `<div class="notice-bar notice-open">${msg}</div>`;
+    notice.style.display = 'block';
+    ewBadge.textContent = '✅ தரவுகளை திருத்தம் செய்வதற்க்கு அனுமதிக்கப்பட்டுள்ளது';
+    ewBadge.className   = 'tbadge tbadge-open';
+  } else {
+    notice.innerHTML = '<div class="notice-bar notice-locked">🔒 இப்போது தரவுகளை திருத்தம் செய்வதற்கு அனுமதி இல்லை. District Office-ஐ தொடர்பு கொள்ளவும்.</div>';
+    notice.style.display = 'block';
+    ewBadge.textContent = '🔒 திருத்த அனுமதி இல்லை';
+    ewBadge.className   = 'tbadge tbadge-locked';
+  }
+  ewBadge.style.display = '';
+}
+
+// ── STATS ──────────────────────────────────────────────────
+function updateStats(data) {
+  const n = data.length || 1;
+  const full  = data.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+  const part  = data.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+  const pos   = data.filter(r=>g(r,'pos')==='உள்ளது').length;
+  const nopos = data.filter(r=>g(r,'pos')==='இல்லை').length;
+  const cards = data.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+  const urban = data.filter(r=>g(r,'area').includes('நகர்')).length;
+  const rural = data.filter(r=>g(r,'area').includes('கிராம')).length;
+  const pct = x => Math.round(x/n*100)+'%';
+  setText('s-total',data.length.toLocaleString()); setText('s-full',full); setText('s-full-pct',pct(full));
+  setText('s-part',part); setText('s-part-pct',pct(part)); setText('s-pos',pos); setText('s-pos-pct',pct(pos));
+  setText('s-nopos',nopos); setText('s-nopos-pct',pct(nopos)); setText('s-cards',cards.toLocaleString());
+  setText('s-urban',urban); setText('s-urban-pct',pct(urban)); setText('s-rural',rural); setText('s-rural-pct',pct(rural));
+
+  // Building type group
+  const buildingEl = document.getElementById('s-building-group');
+  if (buildingEl) {
+    const bTypes = {};
+    data.forEach(r => { const b=g(r,'building'); if(b) bTypes[b]=(bTypes[b]||0)+1; });
+    const bColors = {'சொந்தம்':'#4f8ef7','அரசு இலவசம்':'#3ecf8e','அரசு வாடகை':'#f5a623','தனியார் வாடகை':'#f06060','தனியார் இலவசம்':'#a78bfa'};
+    buildingEl.innerHTML = Object.entries(bTypes).sort((a,b)=>b[1]-a[1]).map(([type,cnt])=>
+      `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;display:flex;align-items:center;gap:5px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${bColors[type]||'var(--muted)'}"></div>
+        <span style="color:var(--muted)">${type}</span>
+        <span style="font-weight:700;font-family:'DM Mono',monospace;color:var(--text)">${cnt}</span>
+      </div>`
+    ).join('');
+  }
+  const C=251,fD=full/n*C,pD=part/n*C,uD=urban/n*C,rD=rural/n*C;
+  setDonut('d-full',fD,C,63); setDonut('d-part',pD,C,63-fD);
+  setDonut('d-urban',uD,C,63); setDonut('d-rural',rD,C,63-uD);
+  setText('d-center',data.length); setText('leg-full',full); setText('leg-part',part);
+  setText('leg-urban',urban); setText('leg-rural',rural);
+}
+function setText(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+function setDonut(id,dash,c,off){ const e=document.getElementById(id); if(e){ e.setAttribute('stroke-dasharray',dash+' '+c); e.setAttribute('stroke-dashoffset',off); } }
+function countBy(arr,fn){ const m={};arr.forEach(r=>{const k=fn(r);if(k)m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
+function makeBars(id,entries,color){
+  const el=document.getElementById(id);if(!el)return;
+  const total=entries.reduce((s,e)=>s+e[1],0)||1,max=entries[0]?.[1]||1;
+  el.innerHTML=entries.map(([label,cnt])=>`<div class="bar-row"><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${cnt/max*100}%;background:${color}"><span class="bar-count">${cnt}</span></div></div><div class="bar-pct">${Math.round(cnt/total*100)}%</div></div>`).join('');
+}
+function renderOverview(data){
+  makeBars('b-building',countBy(data,r=>g(r,'building')),'#a78bfa');
+  makeBars('b-agency',  countBy(data,r=>g(r,'agency')),  '#2dd4bf');
+  makeBars('b-godown',  countBy(data,r=>g(r,'godown')),  '#f5a623');
+}
+function renderTaluk(data){
+  const entries=countBy(data,r=>g(r,'taluk'));
+  makeBars('b-taluk',entries,'#4f8ef7');
+  const tbody=document.getElementById('taluk-tbody');
+  tbody.innerHTML=entries.map(([taluk,cnt])=>{
+    const rows=data.filter(r=>g(r,'taluk')===taluk);
+    const full=rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+    const part=rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+    const pos=rows.filter(r=>g(r,'pos')==='உள்ளது').length;
+    const cards=rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+    return `<tr><td>${taluk}</td><td class="td-mono"><b>${cnt}</b></td><td class="td-mono">${full}</td><td class="td-mono">${part}</td><td class="td-mono">${pos}</td><td class="td-mono">${cards.toLocaleString()}</td></tr>`;
+  }).join('');
+}
+function renderBlock(data){
+  const tf=document.getElementById('block-taluk-filter').value;
+  const src=tf?data.filter(r=>g(r,'taluk')===tf):data;
+  const entries=countBy(src,r=>g(r,'block'));
+  makeBars('b-block',entries,'#3ecf8e');
+  const tbody=document.getElementById('block-tbody');
+  tbody.innerHTML=entries.map(([block,cnt])=>{
+    const rows=src.filter(r=>g(r,'block')===block);
+    const taluk=rows[0]?g(rows[0],'taluk'):'';
+    const full=rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+    const part=rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+    const pos=rows.filter(r=>g(r,'pos')==='உள்ளது').length;
+    const cards=rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+    const blockFinal=finaliseStatus['block:'+block];
+    const statusBadge=blockFinal?'<span class="badge badge-final">🔒 Finalised</span>':isBlockOpen(block)?'<span class="badge badge-open">🟢 Open</span>':'<span class="badge badge-locked">🔒 Closed</span>';
+    return `<tr><td>${block}</td><td style="color:var(--muted)">${taluk}</td><td class="td-mono"><b>${cnt}</b></td><td class="td-mono">${full}</td><td class="td-mono">${part}</td><td class="td-mono">${pos}</td><td>${statusBadge}</td><td class="td-mono">${cards.toLocaleString()}</td></tr>`;
+  }).join('');
+}
+
+// ── HIERARCHY ──────────────────────────────────────────────
+// ── HIERARCHY EXPAND STATE ────────────────────────────────
+let expandedBlock = null;
+
+function toggleBlockExpand(block, event) {
+  event.stopPropagation();
+  if (expandedBlock === block) {
+    expandedBlock = null;
+  } else {
+    expandedBlock = block;
+  }
+  // Re-render hierarchy with current data
+  const src = currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData;
+  renderHierarchy(src);
+  // Also show detail
+  if (expandedBlock) showHierarchyDetail('block', block);
+  else {
+    document.getElementById('hierarchy-detail').style.display='none';
+  }
+}
+
+function renderHierarchy(data) {
+  const container = document.getElementById('hierarchy-container');
+  // Build tree: district → taluks → blocks → societies
+  const taluks = [...new Set(data.map(r=>g(r,'taluk')).filter(Boolean))].sort();
+
+  let html = `
+  <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:900px">
+    <!-- District -->
+    <div class="h-node h-district" onclick="showHierarchyDetail('district','திருவண்ணாமலை மாவட்டம்')">
+      🏛️ திருவண்ணாமலை மாவட்டம்
+      <div style="font-size:10px;opacity:.8;margin-top:2px">${data.length} கடைகள்</div>
+    </div>
+    <div class="h-line-v"></div>
+
+    <!-- Taluks row -->
+    <div style="display:flex;gap:0;align-items:flex-start;position:relative;width:100%">
+      <!-- Horizontal line spanning all taluks -->
+      <div style="position:absolute;top:0;left:5%;right:5%;height:1px;background:var(--border)"></div>
+  `;
+
+  taluks.forEach((taluk, ti) => {
+    const talukRows = data.filter(r=>g(r,'taluk')===taluk);
+    const blocks = [...new Set(talukRows.map(r=>g(r,'block')).filter(Boolean))].sort();
+    const isLast = ti === taluks.length - 1;
+
+    html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:0 4px">
+      <div class="h-line-v" style="height:20px"></div>
+      <div class="h-node h-taluk" onclick="showHierarchyDetail('taluk','${taluk}')"
+        style="font-size:10px;padding:6px 10px;margin-bottom:0">
+        ${taluk}<div style="font-size:9px;opacity:.7">${talukRows.length}</div>
+      </div>
+      <div class="h-line-v" style="height:16px"></div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;position:relative">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:var(--border)"></div>`;
+
+    blocks.forEach(block => {
+      const blockRows = talukRows.filter(r=>g(r,'block')===block);
+      const isFinal = finaliseStatus['block:'+block];
+      const isOpen  = isBlockOpen(block);
+      const cls = isFinal ? 'locked-block' : isOpen ? 'open-block' : '';
+      html += (() => {
+      const isExpanded = expandedBlock === block;
+      return `<div style="display:flex;flex-direction:column;align-items:center">
+        <div class="h-line-v" style="height:14px"></div>
+        <div class="h-node h-block ${cls}" onclick="toggleBlockExpand('${block}', event)"
+          style="font-size:10px;padding:5px 8px;${isExpanded?'border-color:var(--amber);background:#f5a62318;':''}">
+          ${block.replace('திருவண்ணாமலை','TVM')}<br>
+          <span style="font-size:9px;opacity:.7">${blockRows.length} ${isFinal?'🔒':isOpen?'🟢':'🔒'}</span>
+          <span style="font-size:9px;color:var(--amber)">${isExpanded?' ▲':' ▼'}</span>
+        </div>
+        ${isExpanded ? renderSocietiesUnder(blockRows, block) : ''}
+      </div>`;
+    })();
+    });
+
+    html += `</div></div>`;
+  });
+
+  html += `</div></div>`;
+
+  html += `
+  <div style="margin-top:16px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #3ecf8e44;background:var(--bg3)"></div> Block திறந்துள்ளது
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #f0606044;background:var(--bg3)"></div> Block மூடப்பட்டுள்ளது
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+      <div style="width:12px;height:12px;border-radius:3px;border:1px solid #a78bfa44;background:var(--bg3)"></div> Finalised
+    </div>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+function renderSocietiesUnder(blockRows, blockName) {
+  const societies = [...new Set(blockRows.map(r=>g(r,'society')).filter(Boolean))].sort();
+  if (!societies.length) return '';
+  const cols = Math.min(societies.length, 4);
+  return `<div style="margin-top:8px;position:relative">
+    <div style="width:1px;height:12px;background:var(--border);margin:0 auto"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:400px;position:relative">
+      <div style="position:absolute;top:0;left:10%;right:10%;height:1px;background:var(--border)"></div>
+      ${societies.map(soc => {
+        const cnt = blockRows.filter(r=>g(r,'society')===soc).length;
+        const isFinal = finaliseStatus['society:'+soc];
+        return `<div style="display:flex;flex-direction:column;align-items:center">
+          <div style="width:1px;height:10px;background:var(--border)"></div>
+          <div class="h-node h-society ${isFinal?'finalised':''}"
+            style="font-size:9px;padding:4px 7px;cursor:pointer"
+            onclick="showHierarchyDetail('society','${soc}')">
+            ${soc.length>12?soc.slice(0,12)+'..':soc}<br>
+            <span style="opacity:.7">${cnt} கடைகள் ${isFinal?'🔒':''}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function showHierarchyDetail(level, name) {
+  const detail  = document.getElementById('hierarchy-detail');
+  const title   = document.getElementById('hd-title');
+  const content = document.getElementById('hd-content');
+  detail.style.display = 'block';
+
+  const data = currentUser?.role==='editor'
+    ? allData.filter(r=>g(r,'block')===currentUser.block)
+    : allData;
+
+  let rows;
+  if (level==='district') rows = data;
+  else if (level==='taluk') rows = data.filter(r=>g(r,'taluk')===name);
+  else if (level==='block') rows = data.filter(r=>g(r,'block')===name);
+  else rows = data.filter(r=>g(r,'society')===name);
+
+  title.textContent = name + ' — ' + rows.length + ' கடைகள்';
+
+  const societies = [...new Set(rows.map(r=>g(r,'society')).filter(Boolean))].sort();
+  content.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge badge-full">முழுநேரம்: ${rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length}</span>
+      <span class="badge badge-part">பகுதிநேரம்: ${rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length}</span>
+      <span class="badge badge-yes">PoS உள்ளது: ${rows.filter(r=>g(r,'pos')==='உள்ளது').length}</span>
+      <span class="badge badge-no">PoS இல்லை: ${rows.filter(r=>g(r,'pos')==='இல்லை').length}</span>
+    </div>
+    ${level!=='block'?'':renderSocietyMiniCards(societies, rows, name)}
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>குறியீடு</th><th>கடை பெயர்</th><th>நிறுவனம்</th><th>நேர வகை</th><th>அட்டைகள்</th><th>PoS</th></tr></thead>
+      <tbody>${rows.slice(0,20).map((r,i)=>`<tr><td class="td-mono" style="color:var(--muted)">${i+1}</td><td class="td-mono" style="color:var(--teal)">${g(r,'shopcode')}</td><td>${g(r,'shopname')}</td><td style="font-size:11px;color:var(--muted)">${g(r,'society')}</td><td><span class="badge ${g(r,'timetype')==='முழுநேரம்'?'badge-full':'badge-part'}">${g(r,'timetype')}</span></td><td class="td-mono">${g(r,'cards')}</td><td><span class="badge ${g(r,'pos')==='உள்ளது'?'badge-yes':'badge-no'}">${g(r,'pos')}</span></td></tr>`).join('')}</tbody>
+    </table></div>
+    ${rows.length>20?`<div style="font-size:11px;color:var(--muted);margin-top:8px">மேலும் ${rows.length-20} பதிவுகள் — "தரவு" tab-ல் filter செய்யவும்</div>`:''}`
+  detail.scrollIntoView({behavior:'smooth'});
+}
+
+function renderSocietyMiniCards(societies, rows, blockName) {
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${
+    societies.map(soc => {
+      const socRows = rows.filter(r=>g(r,'society')===soc);
+      const isFinal = finaliseStatus['society:'+soc];
+      const canFinalise = currentUser?.role==='master';
+      return `<div style="background:var(--bg3);border:1px solid ${isFinal?'#a78bfa44':'var(--border)'};border-radius:8px;padding:8px 10px;min-width:140px;cursor:pointer" onclick="showHierarchyDetail('society','${soc}')">
+        <div style="font-size:11px;font-weight:600;color:${isFinal?'var(--purple)':'var(--text)'}">${soc}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${socRows.length} கடைகள் ${isFinal?'🔒':''}</div>
+        ${canFinalise?`<button class="btn ${isFinal?'btn-red':'btn-outline'}" style="font-size:9px;padding:2px 6px;margin-top:4px" onclick="event.stopPropagation();toggleFinaliseSociety('${soc}','${blockName}')">${isFinal?'🔓 Unlock':'🔒 Finalise'}</button>`:''}</div>`;
+    }).join('')
+  }</div>`;
+}
+
+// ── ACCESS CONTROL ─────────────────────────────────────────
+const ALL_BLOCKS = [
+  "அனக்காவூர்","ஆரணி  கிழக்கு","ஆரணி மேற்கு","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்",
+  "செங்கம்","செய்யார்","சேத்துப்பட்டு","ஜமுனாமரத்துர்","தண்டராம்பட்டு",
+  "திருவண்ணாமலை 1","திருவண்ணாமலை 2","திருவண்ணாமலை HQ","துரிஞ்சாபுரம்",
+  "தெள்ளார்","புதுப்பாளையம்","பெரணமல்லூர்","போளுர்","வந்தவாசி",
+  "வெம்பாக்கம்  1","வெம்பாக்கம்  2"
+];
+
+function renderAccessControl() {
+  const container = document.getElementById('access-rows');
+  container.innerHTML = ALL_BLOCKS.map(block => {
+    const ac = accessControl[block] || {open:false,from:'',to:''};
+    const isFinal = finaliseStatus['block:'+block];
+    return `<div class="access-row">
+      <div class="access-block-name">${block}</div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="ac-open-${block.replace(/\s+/g,'_')}"
+          ${ac.open?'checked':''} ${isFinal?'disabled':''}>
+        <span class="toggle-slider"></span>
+      </label>
+      <span style="font-size:11px;color:var(--muted)">From:</span>
+      <input type="datetime-local" class="access-datetime"
+        id="ac-from-${block.replace(/\s+/g,'_')}" value="${ac.from}" ${isFinal?'disabled':''}>
+      <span style="font-size:11px;color:var(--muted)">To:</span>
+      <input type="datetime-local" class="access-datetime"
+        id="ac-to-${block.replace(/\s+/g,'_')}" value="${ac.to}" ${isFinal?'disabled':''}>
+      <button class="btn ${isFinal?'btn-red':'btn-amber'}" style="font-size:10px;padding:4px 8px"
+        onclick="toggleFinaliseBlock('${block}')">${isFinal?'🔓 Unlock Block':'🔒 Finalise Block'}</button>
+    </div>`;
+  }).join('');
+
+  renderFinaliseStatus();
+}
+
+function renderFinaliseStatus() {
+  const container = document.getElementById('finalise-status-rows');
+  const blocks = Object.keys(finaliseStatus).filter(k=>k.startsWith('block:')).map(k=>k.replace('block:',''));
+  const societies = Object.keys(finaliseStatus).filter(k=>k.startsWith('society:')).map(k=>k.replace('society:',''));
+
+  let html = '';
+  if (blocks.length) {
+    html += '<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Finalised Blocks</div>';
+    html += blocks.filter(b=>finaliseStatus['block:'+b]).map(b=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <span class="badge badge-final">🔒 ${b}</span>
+        <button class="btn btn-red" style="font-size:10px;padding:3px 8px" onclick="toggleFinaliseBlock('${b}')">🔓 Unlock</button>
+      </div>`).join('');
+  }
+  if (societies.length) {
+    html += '<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:12px;margin-bottom:8px">Finalised Societies</div>';
+    html += societies.filter(s=>finaliseStatus['society:'+s]).map(s=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <span class="badge badge-final">🔒 ${s}</span>
+        <button class="btn btn-red" style="font-size:10px;padding:3px 8px" onclick="toggleFinaliseSociety('${s}','')">🔓 Unlock</button>
+      </div>`).join('');
+  }
+  if (!html) html = '<div style="font-size:12px;color:var(--muted)">இதுவரை finalised items இல்லை</div>';
+  container.innerHTML = html;
+}
+
+async function saveAccessControl() {
+  const rows = [['Block','Open','From','To']];
+  ALL_BLOCKS.forEach(block => {
+    const key = block.replace(/\s+/g,'_');
+    const open = document.getElementById('ac-open-'+key)?.checked ? 'TRUE' : 'FALSE';
+    const from = document.getElementById('ac-from-'+key)?.value || '';
+    const to   = document.getElementById('ac-to-'+key)?.value   || '';
+    accessControl[block] = {open: open==='TRUE', from, to};
+    rows.push([block, open, from, to]);
+  });
+  await sendToScript({action:'updateAccessControl', rows});
+  updateEditorNotice();
+  alert('✅ Access Control saved to Google Sheet!');
+}
+
+function openAllBlocks() {
+  ALL_BLOCKS.forEach(block => {
+    const key = block.replace(/\s+/g,'_');
+    const el = document.getElementById('ac-open-'+key);
+    if (el && !el.disabled) el.checked = true;
+  });
+}
+function closeAllBlocks() {
+  ALL_BLOCKS.forEach(block => {
+    const key = block.replace(/\s+/g,'_');
+    const el = document.getElementById('ac-open-'+key);
+    if (el && !el.disabled) el.checked = false;
+  });
+}
+
+async function toggleFinaliseBlock(block) {
+  const key = 'block:'+block;
+  const current = finaliseStatus[key] || false;
+  const action = current ? 'unlock' : 'finalise';
+  if (!confirm((current?'🔓 Unlock':'🔒 Finalise') + ' block: ' + block + '?')) return;
+  finaliseStatus[key] = !current;
+  await sendToScript({action:'updateFinalise', level:'block', name:block, value: !current});
+  renderAccessControl();
+  renderBlock(currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData);
+  alert((current?'🔓 Unlocked':'🔒 Finalised') + ': ' + block);
+}
+
+async function toggleFinaliseSociety(society, block) {
+  const key = 'society:'+society;
+  const current = finaliseStatus[key] || false;
+  if (!confirm((current?'🔓 Unlock':'🔒 Finalise') + ' society: ' + society + '?')) return;
+  finaliseStatus[key] = !current;
+  await sendToScript({action:'updateFinalise', level:'society', name:society, value: !current});
+  renderFinaliseStatus();
+  alert((current?'🔓 Unlocked':'🔒 Finalised') + ': ' + society);
+}
+
+// ── FILTERS & TABLE ────────────────────────────────────────
+function populateFilters(data) {
+  const taluks   = [...new Set(data.map(r=>g(r,'taluk')).filter(Boolean))].sort();
+  const blocks   = [...new Set(data.map(r=>g(r,'block')).filter(Boolean))].sort();
+  const societies= [...new Set(data.map(r=>g(r,'society')).filter(Boolean))].sort();
+  populateSel('f-taluk', taluks, 'எல்லா வட்டமும்');
+  populateSel('f-block', blocks, 'எல்லா ஒன்றியமும்');
+  populateSel('f-society', societies, 'எல்லா நிறுவனமும்');
+  populateSel('block-taluk-filter', taluks, 'எல்லாம்');
+}
+function populateSel(id,items,ph){
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML=`<option value="">${ph}</option>`+items.map(i=>`<option value="${i}">${i}</option>`).join('');
+}
+
+function applyFilters() {
+  const q   = document.getElementById('search').value.toLowerCase();
+  const tal = document.getElementById('f-taluk').value;
+  const blk = document.getElementById('f-block').value;
+  const soc = document.getElementById('f-society').value;
+  const pos = document.getElementById('f-pos').value;
+  const tm  = document.getElementById('f-time').value;
+  const src = currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData;
+  filteredData = src.filter(r=>{
+    if(tal && g(r,'taluk')!==tal)   return false;
+    if(blk && g(r,'block')!==blk)   return false;
+    if(soc && g(r,'society')!==soc) return false;
+    if(pos && g(r,'pos')!==pos)     return false;
+    if(tm  && g(r,'timetype')!==tm) return false;
+    if(q   && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  currentPage=1; renderDataTable();
+}
+
+function clearFilters() {
+  document.getElementById('search').value='';
+  ['f-taluk','f-block','f-society','f-pos','f-time'].forEach(id=>document.getElementById(id).value='');
+  applyFilters();
+}
+
+function renderDataTable() {
+  const start=(currentPage-1)*PAGE_SIZE;
+  const page=filteredData.slice(start,start+PAGE_SIZE);
+  document.getElementById('data-count').textContent=filteredData.length+' பதிவுகள்';
+
+  // Show finalise buttons for editors if window is open
+  const bulkActions = document.getElementById('bulk-actions');
+  if (currentUser?.role==='editor' && isBlockOpen(currentUser.block)) {
+    const blockFinal = finaliseStatus['block:'+currentUser.block];
+    bulkActions.innerHTML = !blockFinal
+      ? `<button class="btn btn-amber" onclick="toggleFinaliseBlock('${currentUser.block}')">🔒 Block Finalise செய்</button>`
+      : `<span class="badge badge-final">🔒 Block Finalised — திருத்த முடியாது</span>`;
+  } else { bulkActions.innerHTML=''; }
+
+  const tbody=document.getElementById('data-tbody');
+  tbody.innerHTML=page.map(r=>{
+    const pos=g(r,'pos'),tm=g(r,'timetype');
+    const editable=canEditRow(r);
+    const rowStyle=editable?'cursor:pointer':'cursor:default;opacity:.8';
+    const socFinal=finaliseStatus['society:'+g(r,'society')];
+    const blkFinal=finaliseStatus['block:'+g(r,'block')];
+    const statusBadge=blkFinal?'<span class="badge badge-final" style="font-size:9px">🔒B</span>':
+      socFinal?'<span class="badge badge-final" style="font-size:9px">🔒S</span>':
+      editable?'<span class="badge" style="font-size:10px;background:var(--amber);color:#000;font-weight:700;padding:3px 8px;animation:pulse 2s infinite">✏️ திருத்து</span>':
+      '<span class="badge badge-locked" style="font-size:9px">🔒</span>';
+    return `<tr style="${rowStyle}" onclick="${editable?'openEdit('+r._row+')':'showReadOnly('+r._row+')'}">
+      <td class="td-mono" style="color:var(--muted)">${g(r,'serial')}</td>
+      <td style="font-size:10px;color:var(--muted)">${g(r,'taluk')}</td>
+      <td style="font-size:11px">${g(r,'block')}</td>
+      <td style="font-size:10px;color:var(--muted)">${g(r,'society')}</td>
+      <td class="td-mono" style="color:var(--teal)">${g(r,'shopcode')}</td>
+      <td style="font-weight:500">${g(r,'shopname')}</td>
+      <td><span class="badge ${tm==='முழுநேரம்'?'badge-full':'badge-part'}">${tm}</span></td>
+      <td class="td-mono">${g(r,'cards')}</td>
+      <td><span class="badge ${pos==='உள்ளது'?'badge-yes':'badge-no'}">${pos}</span></td>
+      <td style="font-size:10px;color:var(--muted)">${g(r,'building')}</td>
+      <td style="font-size:11px">${g(r,'seller')}</td>
+      <td class="td-mono" style="color:var(--muted);font-size:10px">${g(r,'phone')}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:30px">தரவு இல்லை</td></tr>';
+  // Add delete buttons safely after render
+  document.querySelectorAll('#data-tbody tr').forEach((tr, i) => {
+    const r = page[i];
+    if (!r) return;
+    if (canEditRow(r) || currentUser?.role === 'master') {
+      const lastTd = tr.querySelector('td:last-child');
+      const btn = document.createElement('button');
+      btn.textContent = '🗑';
+      btn.title = 'நீக்கு';
+      btn.style.cssText = 'margin-left:4px;background:#f0606022;color:#f06060;border:1px solid #f0606040;border-radius:6px;font-size:9px;cursor:pointer;padding:2px 6px';
+      btn.onclick = function(e) { e.stopPropagation(); deleteRow(r._row); };
+      lastTd.appendChild(btn);
+    }
+  });
+  renderPagination();
+}
+
+function renderPagination() {
+  const total=Math.ceil(filteredData.length/PAGE_SIZE);
+  const pg=document.getElementById('pagination');
+  if(total<=1){pg.innerHTML='';return;}
+  let html=`<span class="page-info">${currentPage}/${total}</span>`;
+  if(currentPage>1) html+=`<button class="page-btn" onclick="goPage(${currentPage-1})">←</button>`;
+  const s=Math.max(1,currentPage-2),e=Math.min(total,currentPage+2);
+  for(let i=s;i<=e;i++) html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  if(currentPage<total) html+=`<button class="page-btn" onclick="goPage(${currentPage+1})">→</button>`;
+  pg.innerHTML=html;
+}
+function goPage(p){currentPage=p;renderDataTable();}
+
+// ── EDIT MODAL ─────────────────────────────────────────────
+const EDIT_FIELDS=[
+  ['shopname','நியாய விலைக் கடையின் பெயர்'],['shopcode','கடை குறியீடு எண்'],
+  ['block','ஒன்றியம்'],['taluk','வட்டம்'],['timetype','முழுநேரம் / பகுதிநேரம்'],
+  ['cards','குடும்ப அட்டைகள் எண்ணிக்கை'],['pos','PoS இயந்திரம் உள்ளதா?'],
+  ['posother','தாய்க்கடை PoS குறியீட்டு எண்'],['building','கட்டிட வகை'],
+  ['buildingname','கட்டடத்தின் பெயர்'],['seller','விற்பனையாளர் பெயர்'],
+  ['phone','விற்பனையாளர் கைபேசி எண்'],['area','நகர்புறம் / கிராமபுறம்'],
+  ['godown','கிடங்கு'],['remarks','குறிப்பு']
+];
+
+function openEdit(rowNum) {
+  const row=allData.find(r=>r._row===rowNum);
+  if(!row) return;
+  editRowNum=rowNum;
+  document.getElementById('modal-title-text').textContent=g(row,'shopname')+' — '+g(row,'shopcode');
+  document.getElementById('modal-locked-notice').style.display='none';
+  const fields=document.getElementById('modal-fields');
+  fields.innerHTML=EDIT_FIELDS.map(([key,label])=>`
+    <div class="modal-field"><label>${label}</label>
+    <input id="ef-${key}" value="${(g(row,key)||'').replace(/"/g,'&quot;')}"></div>`).join('');
+  const actions=document.getElementById('modal-actions');
+
+  // Society finalise button (visible to editors for their society)
+  const society=g(row,'society');
+  const socFinal=finaliseStatus['society:'+society];
+  const showSocBtn = currentUser?.role==='master' ||
+    (currentUser?.role==='editor' && isBlockOpen(currentUser.block));
+  const socBtn = showSocBtn
+    ? `<button class="btn ${socFinal?'btn-red':'btn-amber'}" onclick="toggleFinaliseSociety('${society}','')">${socFinal?'🔓 Society Unlock':'🔒 Society Finalise'}</button>`
+    : '';
+
+  actions.innerHTML=`
+    ${socBtn}
+    <button class="btn btn-outline" onclick="closeModal()">ரத்து</button>
+    <button class="btn btn-green" onclick="saveEdit()">சேமி ✓</button>`;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function showReadOnly(rowNum) {
+  const row=allData.find(r=>r._row===rowNum);
+  if(!row) return;
+  editRowNum=-1;
+  document.getElementById('modal-title-text').textContent=g(row,'shopname')+' (View Only)';
+  document.getElementById('modal-locked-notice').style.display='block';
+  const fields=document.getElementById('modal-fields');
+  fields.innerHTML=EDIT_FIELDS.map(([key,label])=>`
+    <div class="modal-field"><label>${label}</label>
+    <input id="ef-${key}" value="${(g(row,key)||'').replace(/"/g,'&quot;')}" readonly style="opacity:.7;cursor:default"></div>`).join('');
+  document.getElementById('modal-actions').innerHTML=`<button class="btn btn-outline" onclick="closeModal()">மூடு</button>`;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+async function deleteRow(rowNum) {
+  const row = allData.find(r => r._row === rowNum);
+  const shopName = row ? (row['நியாய விலைக் கடையின் பெயர்'] || 'Row ' + rowNum) : 'Row ' + rowNum;
+  const reason = prompt('"' + shopName + '" — நீக்க காரணம் கூறவும்:');
+  if (reason === null) return;
+  if (!reason.trim()) { alert('காரணம் கட்டாயம் தேவை'); return; }
+  if (!confirm('"' + shopName + '" — நிரந்தரமாக நீக்கவா? காரணம்: ' + reason)) return;
+  await sendToScript({
+    action: 'deleteRow', rowNumber: rowNum,
+    shopName: shopName, reason: reason,
+    editor: currentUser.label,
+    timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
+  });
+  const idx = allData.findIndex(r => r._row === rowNum);
+  if (idx >= 0) allData.splice(idx, 1);
+  allData.forEach((r, i) => r._row = i + 2);
+  applyFilters();
+  alert('"' + shopName + '" நீக்கப்பட்டது. Audit Log-ல் பதிவு செய்யப்பட்டது.');
+}
+
+function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
+
+async function saveEdit() {
+  if(editRowNum<0) return;
+  const row=allData.find(r=>r._row===editRowNum);
+  if(!row) return;
+  const changes=[];
+  EDIT_FIELDS.forEach(([key,col])=>{
+    const el=document.getElementById('ef-'+key);
+    if(el && el.value.trim()!==g(row,key)) {
+      changes.push({col, old:g(row,key), new:el.value.trim()});
+      row[col]=el.value.trim();
+    }
+  });
+  if(!changes.length){closeModal();return;}
+  await sendToScript({
+    action:'update', rowNumber:editRowNum, changes,
+    editor:currentUser.label,
+    timestamp:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})
+  });
+  closeModal(); applyFilters();
+}
+
+// ── AUDIT ──────────────────────────────────────────────────
+async function loadAudit() {
+  const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/Audit_Log?key=${CONFIG.API_KEY}`;
+  try {
+    const res=await fetch(url);
+    const json=await res.json();
+    if(!json.values||json.values.length<2){document.getElementById('audit-list').innerHTML='<p style="color:var(--muted);font-size:12px">இதுவரை மாற்றங்கள் இல்லை</p>';return;}
+    const rows=json.values.slice(1).reverse().slice(0,100);
+    document.getElementById('audit-list').innerHTML=rows.map(r=>`
+      <div class="audit-item">
+        <div class="audit-meta"><span>🕐 ${r[0]||''}</span><span>👤 ${r[1]||''}</span><span>📍 Row ${r[2]||''}</span><span>📋 ${r[3]||''}</span></div>
+        <div><span class="audit-old">${r[4]||''}</span><span style="color:var(--muted);margin:0 6px">→</span><span class="audit-new">${r[5]||''}</span></div>
+      </div>`).join('');
+  }catch(e){document.getElementById('audit-list').innerHTML='<p style="color:var(--red);font-size:12px">Audit_Log sheet not found</p>';}
+}
+
+// ── SEND TO SCRIPT ─────────────────────────────────────────
+async function sendToScript(payload) {
+  try {
+    await fetch(CONFIG.SCRIPT_URL,{
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+  } catch(e) { console.error('Script error:',e); }
+}
+
+// ── EXPORT ─────────────────────────────────────────────────
+function exportCSV() {
+  const exportData = filteredData.length ? filteredData : allData;
+  if(!exportData.length){alert('தரவு இல்லை');return;}
+  filteredData = exportData;
+  const keys=Object.keys(filteredData[0]).filter(k=>k!=='_row');
+  const rows=[keys.join(','),...filteredData.map(r=>keys.map(k=>`"${(r[k]||'').replace(/"/g,'""')}"`).join(','))];
+  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='FPS_${new Date().toISOString().slice(0,10)}.csv';a.click();
+}
+
+// ── SETTINGS ───────────────────────────────────────────────
+function openSettings() {
+  const tbody=document.getElementById('settings-users-table');
+  tbody.innerHTML=Object.entries(CONFIG.USERS).map(([uid,u])=>`
+    <tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #1e2333;font-family:'DM Mono',monospace;color:var(--teal)">${uid}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #1e2333">
+        <input value="${u.password}" onchange="CONFIG.USERS['${uid}'].password=this.value"
+          style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:12px;font-family:'DM Mono',monospace;width:180px">
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid #1e2333">
+        <span class="badge ${u.role==='master'?'badge-yes':'badge-full'}">${u.role}</span>
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid #1e2333;font-size:11px;color:var(--muted)">${u.block||'ALL'}</td>
+    </tr>`).join('');
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+function switchView(name) {
+  const views=['overview','hierarchy','taluk','block','data','access','audit'];
+  views.forEach(v=>{const el=document.getElementById('view-'+v);if(el)el.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const el=document.getElementById('view-'+name);
+  if(el) el.classList.add('active');
+  const tabEl=document.getElementById('tab-'+name);
+  if(tabEl) tabEl.classList.add('active');
+  if(name==='block') renderBlock(currentUser?.role==='editor'?allData.filter(r=>g(r,'block')===currentUser.block):allData);
+  if(name==='audit'&&currentUser?.role==='master') loadAudit();
+  if(name==='access') renderAccessControl();
+  if(name==='data') applyFilters();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('settings-modal').addEventListener('click',function(e){if(e.target===this)document.getElementById('settings-modal').classList.remove('open');});
+</script>
+</body>
+</html>
