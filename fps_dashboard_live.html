@@ -87,6 +87,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .bar-count{font-size:10px;font-weight:600;color:rgba(255,255,255,.9);font-family:'DM Mono',monospace}
 .bar-pct{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;width:34px;text-align:right;flex-shrink:0}
 
+/* eKYC styles */
+.ekyc-circle-btn{font-size:11px;padding:6px 12px}
+.ekyc-circle-active{background:var(--blue) !important;color:#fff !important;border-color:var(--blue) !important}
+.ekyc-progress{display:inline-block;width:120px;height:14px;background:var(--bg3);border-radius:7px;overflow:hidden;vertical-align:middle;border:1px solid var(--border)}
+.ekyc-progress-fill{height:100%;border-radius:6px;transition:width .4s ease}
+.ekyc-pct{font-family:'DM Mono',monospace;font-size:12px;font-weight:700}
+.ekyc-row{cursor:pointer;transition:background .15s}
+.ekyc-row:hover{background:#1a1f2e}
+.ekyc-row.selected{background:#1e2a4a !important;border-left:3px solid var(--blue)}
+.ekyc-stat-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;min-width:130px}
+.ekyc-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.ekyc-stat-value{font-size:18px;font-weight:700;font-family:'DM Mono',monospace}
+.ekyc-delta-up{color:var(--green)}
+.ekyc-delta-down{color:var(--red)}
+.ekyc-delta-same{color:var(--muted)}
+#ekyc-dropzone:hover{background:#1a1f2e;border-color:var(--blue)}
+#ekyc-dropzone.dragover{background:#1e2a4a;border-color:var(--blue);transform:scale(1.01)}
+
+/* Edit-save blink highlight */
+@keyframes pulse{0%{opacity:.7}50%{opacity:1}100%{opacity:.7}}
+@keyframes savedBlink{
+  0%,100%{background:transparent;box-shadow:none}
+  20%,60%{background:#3ecf8e26;box-shadow:0 0 0 2px #3ecf8e88 inset}
+  40%,80%{background:#3ecf8e0a;box-shadow:0 0 0 2px #3ecf8e44 inset}
+}
+.row-saved-blink{animation:savedBlink 2.4s ease-in-out 1}
+
+/* Card action buttons (📷 screenshot, 📋 copy) */
+.card-actions{display:inline-flex;gap:6px;margin-left:auto}
+.card-action-btn{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--muted);transition:all .15s;font-family:inherit}
+.card-action-btn:hover{background:#1a1f2e;color:var(--text);border-color:var(--blue)}
+.card-action-btn.success{background:#3ecf8e22;color:var(--green);border-color:#3ecf8e44}
+.card-actions-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+
 /* DONUT */
 .donut-wrap{display:flex;align-items:center;gap:16px}
 .legend-item{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-size:12px;color:var(--muted)}
@@ -188,8 +222,8 @@ tr:last-child td{border-bottom:none}
 .overlay-box{background:var(--bg2);border:1px solid var(--red);border-radius:16px;padding:36px;max-width:380px}
 
 /* VIEWS */
-#view-overview,#view-hierarchy,#view-taluk,#view-block,#view-data,#view-access,#view-audit,#view-compare{display:none}
-#view-overview.active,#view-hierarchy.active,#view-taluk.active,#view-block.active,#view-data.active,#view-access.active,#view-audit.active,#view-compare.active{display:block}
+#view-overview,#view-hierarchy,#view-taluk,#view-block,#view-data,#view-access,#view-audit,#view-compare,#view-ekyc{display:none}
+#view-overview.active,#view-hierarchy.active,#view-taluk.active,#view-block.active,#view-data.active,#view-access.active,#view-audit.active,#view-compare.active,#view-ekyc.active{display:block}
 
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px}
 .notice-bar{border-radius:8px;padding:8px 12px;font-size:11px;margin-bottom:12px;line-height:1.6}
@@ -199,6 +233,7 @@ tr:last-child td{border-bottom:none}
 .c-red{color:var(--red)}.c-purple{color:var(--purple)}.c-teal{color:var(--teal)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -348,6 +383,7 @@ tr:last-child td{border-bottom:none}
       <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access Control</button>
       <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">Audit</button>
       <button class="tab" onclick="switchView('compare')" id="tab-compare" style="display:none">📊 ஒப்பிடு பார்வை</button>
+      <button class="tab" onclick="switchView('ekyc')" id="tab-ekyc">📋 e-KYC Review</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -364,6 +400,29 @@ tr:last-child td{border-bottom:none}
         <div class="card"><div class="card-title">கட்டிட வகை</div><div id="b-building"></div></div>
         <div class="card"><div class="card-title">Agency Group</div><div id="b-agency"></div></div>
         <div class="card"><div class="card-title">கிடங்கு</div><div id="b-godown"></div></div>
+      </div>
+
+      <!-- ABSTRACT TABLE — Block-wise summary -->
+      <div class="card" id="abstract-card">
+        <div class="card-title" id="abstract-table-title">📑 Abstract Table — Block-wise Summary</div>
+        <div class="card-sub" id="abstract-table-sub">ஒவ்வொரு ஒன்றியத்தின் மொத்த விவரம்</div>
+        <div class="table-wrap" style="margin-top:10px;overflow-x:auto">
+          <table id="abstract-table" style="border-collapse:collapse;width:100%;min-width:760px">
+            <thead>
+              <tr>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:center;font-size:11px;width:50px">வ.எண்</th>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:left;font-size:11px;min-width:160px">Block Name</th>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:center;font-size:11px;color:var(--teal)">Societies</th>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:center;font-size:11px;color:var(--blue)">Total Shops</th>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:center;font-size:11px;color:var(--blue)">Full-time</th>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:center;font-size:11px;color:var(--amber)">Part-time</th>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:center;font-size:11px;color:var(--green)">PoS உள்ளவை</th>
+                <th style="background:var(--bg3);border:1px solid var(--border);padding:8px;text-align:center;font-size:11px;color:var(--red)">PoS இல்லாதவை</th>
+              </tr>
+            </thead>
+            <tbody id="abstract-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- AGENCY × AREA × TIME-TYPE REPORT TABLE -->
@@ -418,7 +477,7 @@ tr:last-child td{border-bottom:none}
         <div class="card-title">வட்டம்வாரியான கடைகள்</div>
         <div id="b-taluk"></div>
       </div>
-      <div class="card">
+      <div class="card" id="taluk-table-card">
         <div class="card-title">வட்டம்வாரியான அட்டவணை</div>
         <div class="table-wrap"><table>
           <thead><tr><th>வட்டம்</th><th>மொத்தம்</th><th>முழுநேரம்</th><th>பகுதிநேரம்</th><th>PoS உள்ளது</th><th>மொத்த அட்டைகள்</th></tr></thead>
@@ -434,7 +493,7 @@ tr:last-child td{border-bottom:none}
         <select class="filter-select" id="block-taluk-filter" onchange="renderBlock()"><option value="">எல்லாம்</option></select>
       </div>
       <div class="card"><div class="card-title">ஒன்றியம்வாரியான கடைகள்</div><div id="b-block"></div></div>
-      <div class="card">
+      <div class="card" id="block-table-card">
         <div class="card-title">ஒன்றியம்வாரியான அட்டவணை</div>
         <div class="table-wrap"><table>
           <thead><tr><th>ஒன்றியம்</th><th>வட்டம்</th><th>மொத்தம்</th><th>முழுநேரம்</th><th>பகுதிநேரம்</th><th>PoS உள்ளது</th><th>Block நிலை</th><th>மொத்த அட்டைகள்</th></tr></thead>
@@ -546,6 +605,97 @@ tr:last-child td{border-bottom:none}
       </div>
     </div>
 
+    <!-- E-KYC REVIEW -->
+    <div id="view-ekyc">
+      <!-- Master upload zone -->
+      <div class="card" id="ekyc-upload-card">
+        <div class="card-title">📋 e-KYC Review — Upload Excel</div>
+        <div class="card-sub">TNPDS state file (Shop Wise) அல்லது pre-filtered Thiruvannamalai file — இரண்டையும் அறிந்து கொள்ளும்</div>
+        <div id="ekyc-dropzone" style="border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3);margin-top:10px">
+          <div style="font-size:32px;margin-bottom:8px">📥</div>
+          <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">Drop excel file here or click to browse</div>
+          <div style="font-size:11px;color:var(--muted)">.xlsx · .xls — auto-detects "Shop Wise" or "Thiruvannamalai all Shops"</div>
+          <input type="file" id="ekyc-file-input" accept=".xlsx,.xls" style="display:none">
+        </div>
+        <div id="ekyc-upload-status" style="margin-top:10px;font-size:12px"></div>
+      </div>
+
+      <!-- Editor read-only banner -->
+      <div class="card" id="ekyc-editor-banner" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">👁️</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Read-only View</div>
+            <div style="font-size:11px;color:var(--muted)">Latest upload by Master is shown — filtered to your block</div>
+          </div>
+          <button class="btn btn-outline" onclick="loadEkycFromCloud()" style="margin-left:auto;font-size:11px">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Filters + Actions row -->
+      <div class="card" id="ekyc-controls" style="display:none">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div style="font-size:11px;color:var(--muted);font-weight:600">Circle:</div>
+          <button class="btn btn-outline ekyc-circle-btn ekyc-circle-active" data-circle="" onclick="setEkycCircle('')">All</button>
+          <button class="btn btn-outline ekyc-circle-btn" data-circle="Thiruvannamalai" onclick="setEkycCircle('Thiruvannamalai')">Thiruvannamalai (12)</button>
+          <button class="btn btn-outline ekyc-circle-btn" data-circle="Cheyyar" onclick="setEkycCircle('Cheyyar')">Cheyyar (9)</button>
+          <div style="flex:1;min-width:10px"></div>
+          <button class="btn btn-outline" id="ekyc-save-btn" onclick="saveEkycToSheet()" style="color:var(--green);border-color:#3ecf8e44">💾 Save to Sheet</button>
+          <button class="btn btn-outline" onclick="exportEkycExcel()" style="color:var(--green);border-color:#3ecf8e44">⬇ Excel</button>
+          <button class="btn btn-outline" onclick="exportEkycPdf()" style="color:var(--amber);border-color:#f5a62344">⬇ PDF</button>
+        </div>
+        <div id="ekyc-summary-strip" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"></div>
+      </div>
+
+      <!-- Block table -->
+      <div class="card" id="ekyc-blocks-card" style="display:none">
+        <div class="card-title">🏢 Block-wise progress (worst → best)</div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th style="width:40px">#</th><th>Block</th><th>Circle</th>
+            <th class="td-mono">Considered</th><th class="td-mono">Completed</th>
+            <th>Progress</th><th>%</th><th class="td-mono">Δ</th><th style="width:60px"></th>
+          </tr></thead>
+          <tbody id="ekyc-blocks-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <!-- Society table (shown when block selected) -->
+      <div class="card" id="ekyc-societies-card" style="display:none">
+        <div class="card-title" id="ekyc-societies-title">📍 Societies</div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th style="width:40px">#</th><th>Society</th>
+            <th class="td-mono">Considered</th><th class="td-mono">Completed</th>
+            <th>Progress</th><th>%</th><th class="td-mono">Δ</th><th class="td-mono">Shops</th><th style="width:60px"></th>
+          </tr></thead>
+          <tbody id="ekyc-societies-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <!-- Shop table (shown when society selected) -->
+      <div class="card" id="ekyc-shops-card" style="display:none">
+        <div class="card-title" id="ekyc-shops-title">🏪 Shops</div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th style="width:40px">#</th><th>Shop Code</th><th>Shop Name</th>
+            <th class="td-mono">Considered</th><th class="td-mono">Completed</th>
+            <th>Progress</th><th>%</th><th class="td-mono">Δ</th>
+          </tr></thead>
+          <tbody id="ekyc-shops-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="card" id="ekyc-empty-state">
+        <div style="text-align:center;padding:30px;color:var(--muted)">
+          <div style="font-size:36px;margin-bottom:8px">📋</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">No data loaded yet</div>
+          <div style="font-size:11px">Upload an excel file above to see block-wise eKYC progress</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -621,7 +771,7 @@ const CONFIG = {
     "superintendent": { password: "Supt@PDS#2026", role: "master", label: "PDS Superintendent", block: null },
     "deputyregistrar": { password: "DR@Office#2026", role: "master", label: "Deputy Registrar — Office Head", block: null },
     "anakavoor": { password: "Anak@2026#fps", role: "editor", label: "Anakavoor Block", block: "அனக்காவூர்" },
-    "arani_east": { password: "ArEast@2026#fps", role: "editor", label: "Arani East Block", block: "ஆரணி  கிழக்கு" },
+    "arani_east": { password: "ArEast@2026#fps", role: "editor", label: "Arani East Block", block: "ஆரணி கிழக்கு" },
     "arani_west": { password: "ArWest@2026#fps", role: "editor", label: "Arani West Block", block: "ஆரணி மேற்கு" },
     "kalasapakkam": { password: "Kala@2026#fps", role: "editor", label: "Kalasapakkam Block", block: "கலசபாக்கம்" },
     "kilpennathur": { password: "Kilp@2026#fps", role: "editor", label: "Kilpennathur Block", block: "கீழ்ப்பென்னாத்துர்" },
@@ -639,8 +789,8 @@ const CONFIG = {
     "pernamallur": { password: "Perna@2026#fps", role: "editor", label: "Pernamallur Block", block: "பெரணமல்லூர்" },
     "polur": { password: "Polu@2026#fps", role: "editor", label: "Polur Block", block: "போளுர்" },
     "vandavasi": { password: "Vanda@2026#fps", role: "editor", label: "Vandavasi Block", block: "வந்தவாசி" },
-    "vembakkam1": { password: "Vemb1@2026#fps", role: "editor", label: "Vembakkam 1 Block", block: "வெம்பாக்கம்  1" },
-    "vembakkam2": { password: "Vemb2@2026#fps", role: "editor", label: "Vembakkam 2 Block", block: "வெம்பாக்கம்  2" }
+    "vembakkam1": { password: "Vemb1@2026#fps", role: "editor", label: "Vembakkam 1 Block", block: "வெம்பாக்கம் 1" },
+    "vembakkam2": { password: "Vemb2@2026#fps", role: "editor", label: "Vembakkam 2 Block", block: "வெம்பாக்கம் 2" }
   }
 };
 
@@ -696,9 +846,16 @@ function doLogin() {
   if (cfg.role === 'master') {
     roleBadge.textContent = '∞ Master';
     roleBadge.className   = 'tbadge tbadge-master';
+    // Explicitly show every master-visible tab (defensive — old deployments may have stale styles)
+    document.getElementById('tab-overview').style.display = '';
+    document.getElementById('tab-hierarchy').style.display = '';
+    document.getElementById('tab-taluk').style.display = '';
+    document.getElementById('tab-block').style.display = '';
+    document.getElementById('tab-data').style.display = '';
     document.getElementById('tab-access').style.display = '';
     document.getElementById('tab-audit').style.display  = '';
     document.getElementById('tab-compare').style.display = '';
+    document.getElementById('tab-ekyc').style.display = '';
     document.getElementById('btn-csv').style.display = '';
     document.getElementById('btn-excel').style.display = '';
     document.getElementById('btn-audit-dl').style.display = '';
@@ -848,6 +1005,8 @@ async function loadData() {
     updateEditorNotice();
     // Always populate filteredData so CSV/Excel export works immediately
     applyFilters();
+    // Wire card action buttons (📷 screenshot + 📋 copy table) onto every card
+    attachCardActions();
   } catch(e) {
     document.getElementById('topbar-sub').textContent = 'Error: ' + e.message;
   }
@@ -958,7 +1117,69 @@ function renderOverview(data){
   makeBars('b-building',countBy(data,r=>g(r,'building')),'#a78bfa');
   makeBars('b-agency',  countBy(data,r=>g(r,'agency')),  '#2dd4bf');
   makeBars('b-godown',  countBy(data,r=>g(r,'godown')),  '#f5a623');
+  renderAbstractTable(data);
   renderAgencyReport(data);
+}
+
+function renderAbstractTable(data) {
+  const tbody = document.getElementById('abstract-tbody');
+  if (!tbody) return;
+
+  // Update title for editor scope
+  const titleEl = document.getElementById('abstract-table-title');
+  const subEl = document.getElementById('abstract-table-sub');
+  if (titleEl) {
+    if (currentUser?.role === 'editor' && currentUser.block) {
+      titleEl.innerHTML = `📑 Abstract Table — ${currentUser.block} Block`;
+      if (subEl) subEl.textContent = `${currentUser.block} ஒன்றியத்தின் மொத்த விவரம்`;
+    } else {
+      titleEl.innerHTML = `📑 Abstract Table — Block-wise Summary`;
+      if (subEl) subEl.textContent = `மாவட்டத்தின் ஒவ்வொரு ஒன்றியத்தின் மொத்த விவரம்`;
+    }
+  }
+
+  // Group by block
+  const blocks = [...new Set(data.map(r=>g(r,'block')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+
+  let bodyHtml = '';
+  let totals = { socs:0, shops:0, full:0, part:0, posY:0, posN:0 };
+  blocks.forEach((block, i) => {
+    const rows = data.filter(r => g(r,'block')===block);
+    const socs = new Set(rows.map(r=>g(r,'society')).filter(Boolean)).size;
+    const full = rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+    const part = rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+    const posY = rows.filter(r=>g(r,'pos')==='உள்ளது').length;
+    const posN = rows.filter(r=>g(r,'pos')==='இல்லை').length;
+    totals.socs += socs; totals.shops += rows.length;
+    totals.full += full; totals.part += part;
+    totals.posY += posY; totals.posN += posN;
+
+    const cell = 'border:1px solid var(--border);padding:8px 10px;text-align:center;font-family:\'DM Mono\',monospace;font-size:12px';
+    const labelCell = 'border:1px solid var(--border);padding:8px 12px;text-align:left;font-size:12px;color:var(--text);font-weight:500';
+    bodyHtml += `<tr ${i%2===0?'':'style="background:#0f1117"'}>
+      <td style="${cell};color:var(--muted)">${i+1}</td>
+      <td style="${labelCell}">${block}</td>
+      <td style="${cell};color:var(--teal)">${socs}</td>
+      <td style="${cell};color:var(--blue);font-weight:700">${rows.length}</td>
+      <td style="${cell};color:${full?'var(--blue)':'var(--muted)'}">${full}</td>
+      <td style="${cell};color:${part?'var(--amber)':'var(--muted)'}">${part}</td>
+      <td style="${cell};color:${posY?'var(--green)':'var(--muted)'}">${posY}</td>
+      <td style="${cell};color:${posN?'var(--red)':'var(--muted)'}">${posN}</td>
+    </tr>`;
+  });
+
+  // Totals row
+  bodyHtml += `<tr style="background:linear-gradient(90deg,#1e2a4a 0%,#1a2332 100%);border-top:2px solid var(--blue)">
+    <td colspan="2" style="border:1px solid var(--border);padding:10px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--blue)">மொத்தம்</td>
+    <td style="border:1px solid var(--border);padding:10px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--teal)">${totals.socs}</td>
+    <td style="border:1px solid var(--border);padding:10px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--blue)">${totals.shops}</td>
+    <td style="border:1px solid var(--border);padding:10px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--blue)">${totals.full}</td>
+    <td style="border:1px solid var(--border);padding:10px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--amber)">${totals.part}</td>
+    <td style="border:1px solid var(--border);padding:10px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--green)">${totals.posY}</td>
+    <td style="border:1px solid var(--border);padding:10px;text-align:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--red)">${totals.posN}</td>
+  </tr>`;
+
+  tbody.innerHTML = bodyHtml;
 }
 
 function renderAgencyReport(data) {
@@ -1648,6 +1869,7 @@ function showHierarchyDetail(level, name) {
     </table></div>
     ${rows.length>20?`<div style="font-size:11px;color:var(--muted);margin-top:8px">மேலும் ${rows.length-20} பதிவுகள் — "தரவு" tab-ல் filter செய்யவும்</div>`:''}`
   detail.scrollIntoView({behavior:'smooth'});
+  if (typeof attachCardActions === 'function') setTimeout(attachCardActions, 30);
 }
 
 function renderSocietyMiniCards(societies, rows, blockName) {
@@ -1666,11 +1888,11 @@ function renderSocietyMiniCards(societies, rows, blockName) {
 
 // ── ACCESS CONTROL ─────────────────────────────────────────
 const ALL_BLOCKS = [
-  "அனக்காவூர்","ஆரணி  கிழக்கு","ஆரணி மேற்கு","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்",
+  "அனக்காவூர்","ஆரணி கிழக்கு","ஆரணி மேற்கு","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்",
   "செங்கம்","செய்யார்","சேத்துப்பட்டு","ஜமுனாமரத்துர்","தண்டராம்பட்டு",
   "திருவண்ணாமலை 1","திருவண்ணாமலை 2","திருவண்ணாமலை HQ","துரிஞ்சாபுரம்",
   "தெள்ளார்","புதுப்பாளையம்","பெரணமல்லூர்","போளுர்","வந்தவாசி",
-  "வெம்பாக்கம்  1","வெம்பாக்கம்  2"
+  "வெம்பாக்கம் 1","வெம்பாக்கம் 2"
 ];
 
 function renderAccessControl() {
@@ -1838,7 +2060,7 @@ function makeRow(r) {
   }
 
   const clickFn = editable ? 'openEdit(' + r._row + ')' : 'showReadOnly(' + r._row + ')';
-  return '<tr style="' + rowStyle + '" onclick="' + clickFn + '">' +
+  return '<tr data-row="' + r._row + '" style="' + rowStyle + '" onclick="' + clickFn + '">' +
     '<td class="td-mono" style="color:var(--muted)">' + g(r,'serial') + '</td>' +
     '<td style="font-size:10px;color:var(--muted)">' + fmtTaluk(g(r,'taluk')) + '</td>' +
     '<td style="font-size:11px">' + g(r,'block') + '</td>' +
@@ -1931,7 +2153,7 @@ function goPage(p){currentPage=p;renderDataTable();}
 // ── EDIT MODAL ─────────────────────────────────────────────
 // Dropdown options for edit fields
 const EDIT_DROPDOWNS = {
-  'ஒன்றியம்': ["அனக்காவூர்","ஆரணி  கிழக்கு","ஆரணி மேற்கு","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்","செங்கம்","செய்யார்","சேத்துப்பட்டு","ஜமுனாமரத்துர்","தண்டராம்பட்டு","திருவண்ணாமலை 1","திருவண்ணாமலை 2","திருவண்ணாமலை HQ","துரிஞ்சாபுரம்","தெள்ளார்","புதுப்பாளையம்","பெரணமல்லூர்","போளுர்","வந்தவாசி","வெம்பாக்கம்  1","வெம்பாக்கம்  2"],
+  'ஒன்றியம்': ["அனக்காவூர்","ஆரணி கிழக்கு","ஆரணி மேற்கு","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்","செங்கம்","செய்யார்","சேத்துப்பட்டு","ஜமுனாமரத்துர்","தண்டராம்பட்டு","திருவண்ணாமலை 1","திருவண்ணாமலை 2","திருவண்ணாமலை HQ","துரிஞ்சாபுரம்","தெள்ளார்","புதுப்பாளையம்","பெரணமல்லூர்","போளுர்","வந்தவாசி","வெம்பாக்கம் 1","வெம்பாக்கம் 2"],
   'வட்டம்': ["Arani (Tk)","Chengam (Tk)","Chetpet","Cheyyar (Tk)","Jamunamarathur","Kalasapakkam(Tk)","Kilpennathur","Polur (Tk)","Thandrampattu","Thiruvannamalai (Tk)","Vandavasi (Tk)","Vembakkam"],
   'முழுநேரம் / பகுதிநேரம்': ["முழுநேரம்","பகுதிநேரம்"],
   'PoS இயந்திரம் உள்ளதா?': ["உள்ளது","இல்லை"],
@@ -2056,7 +2278,27 @@ async function saveEdit() {
     editor:currentUser.label,
     timestamp:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})
   });
-  closeModal(); applyFilters();
+  // Stash the row we just edited so we can preserve page + blink it
+  const savedRowNum = editRowNum;
+  closeModal();
+  // Re-apply filters but PRESERVE current page (applyFilters resets to 1, so we override)
+  const pageBeforeSave = currentPage;
+  applyFilters();
+  // applyFilters set currentPage=1; restore it if it's still valid given new filtered data
+  const maxPage = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+  currentPage = Math.min(pageBeforeSave, maxPage);
+  renderDataTable();
+  // Blink the edited row to highlight it (give DOM a moment to render)
+  setTimeout(() => {
+    const tbody = document.getElementById('data-tbody');
+    if (!tbody) return;
+    const rowEl = tbody.querySelector(`tr[data-row="${savedRowNum}"]`);
+    if (rowEl) {
+      rowEl.scrollIntoView({behavior:'smooth', block:'center'});
+      rowEl.classList.add('row-saved-blink');
+      setTimeout(() => rowEl.classList.remove('row-saved-blink'), 2400);
+    }
+  }, 60);
 }
 
 // ── AUDIT ──────────────────────────────────────────────────
@@ -2356,12 +2598,811 @@ function openSettings() {
   document.getElementById('settings-modal').classList.add('open');
 }
 
+// ── CARD ACTION BUTTONS (📷 screenshot, 📋 copy table) ──────────────────
+// Configs: each entry = id of card to wire actions for, title for clipboard, table id (optional)
+const CARD_ACTION_CONFIGS = [
+  // Overview
+  { cardId: 'abstract-card',       title: 'Abstract Table',       tableId: 'abstract-table' },
+  // Taluk & Block tabs
+  { cardId: 'taluk-table-card',    title: 'Taluk Summary',        tableId: null },
+  { cardId: 'block-table-card',    title: 'Block Summary',        tableId: null },
+  // Hierarchy (detail panel populated dynamically)
+  { cardId: 'hierarchy-detail',    title: 'Hierarchy Details',    tableId: null },
+  // eKYC tables
+  { cardId: 'ekyc-blocks-card',    title: 'eKYC Block-wise',      tableSelector: '#ekyc-blocks-card table' },
+  { cardId: 'ekyc-societies-card', title: 'eKYC Society-wise',    tableSelector: '#ekyc-societies-card table' },
+  { cardId: 'ekyc-shops-card',     title: 'eKYC Shop-wise',       tableSelector: '#ekyc-shops-card table' }
+];
+
+// Public function — wire actions onto every configured card. Idempotent.
+function attachCardActions() {
+  CARD_ACTION_CONFIGS.forEach(cfg => {
+    const card = document.getElementById(cfg.cardId);
+    if (!card) return;
+    if (card.querySelector('.card-actions')) return;  // already wired
+    const titleEl = card.querySelector('.card-title');
+    if (!titleEl) return;
+    // Wrap title in a flex row so buttons sit on the right
+    if (!titleEl.classList.contains('card-actions-row')) {
+      titleEl.classList.add('card-actions-row');
+    }
+    const actions = document.createElement('span');
+    actions.className = 'card-actions';
+    const screenshotBtn = document.createElement('button');
+    screenshotBtn.className = 'card-action-btn';
+    screenshotBtn.title = 'Copy as image to clipboard';
+    screenshotBtn.innerHTML = '📷 Screenshot';
+    screenshotBtn.onclick = () => screenshotCard(cfg.cardId, screenshotBtn);
+    actions.appendChild(screenshotBtn);
+    // Find the inner table (if any) for "Copy table"
+    const tableSel = cfg.tableSelector || (cfg.tableId ? '#'+cfg.tableId : '#'+cfg.cardId+' table');
+    if (card.querySelector(tableSel) || cfg.tableSelector === null) {
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'card-action-btn';
+      copyBtn.title = 'Copy table — paste in Word/Excel';
+      copyBtn.innerHTML = '📋 Copy table';
+      copyBtn.onclick = () => copyTableInCard(cfg.cardId, tableSel, copyBtn);
+      actions.appendChild(copyBtn);
+    }
+    titleEl.appendChild(actions);
+  });
+  // Agency Report card has no id, so wire by class lookup
+  attachAgencyReportActions();
+}
+
+function attachAgencyReportActions() {
+  const titleEl = document.getElementById('agency-report-title');
+  if (!titleEl) return;
+  const card = titleEl.closest('.card');
+  if (!card || card.querySelector('.card-actions')) return;
+  if (!titleEl.classList.contains('card-actions-row')) {
+    titleEl.classList.add('card-actions-row');
+  }
+  const actions = document.createElement('span');
+  actions.className = 'card-actions';
+  const sBtn = document.createElement('button');
+  sBtn.className = 'card-action-btn';
+  sBtn.title = 'Copy as image to clipboard';
+  sBtn.innerHTML = '📷 Screenshot';
+  sBtn.onclick = () => screenshotElement(card, sBtn);
+  const cBtn = document.createElement('button');
+  cBtn.className = 'card-action-btn';
+  cBtn.title = 'Copy table — paste in Word/Excel';
+  cBtn.innerHTML = '📋 Copy table';
+  cBtn.onclick = () => copyTableInCard(null, '#agency-report-table', cBtn, card);
+  actions.appendChild(sBtn);
+  actions.appendChild(cBtn);
+  titleEl.appendChild(actions);
+}
+
+// Screenshot a card by ID
+async function screenshotCard(cardId, btn) {
+  const el = document.getElementById(cardId);
+  if (!el) return;
+  await screenshotElement(el, btn);
+}
+
+// Screenshot an element using html2canvas → clipboard
+async function screenshotElement(el, btn) {
+  if (typeof html2canvas === 'undefined') {
+    if (btn) flashBtn(btn, '⚠ html2canvas not loaded', 2000);
+    return;
+  }
+  const original = btn ? btn.innerHTML : null;
+  if (btn) btn.innerHTML = '⏳ ...';
+  try {
+    // Briefly hide the action buttons themselves so they don't appear in screenshot
+    const actionsEl = el.querySelector('.card-actions');
+    const prevDisp = actionsEl ? actionsEl.style.display : null;
+    if (actionsEl) actionsEl.style.display = 'none';
+
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#0f1117',
+      scale: 2,
+      logging: false,
+      useCORS: true
+    });
+
+    if (actionsEl) actionsEl.style.display = prevDisp || '';
+
+    canvas.toBlob(async (blob) => {
+      try {
+        if (navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          if (btn) flashBtn(btn, '✓ Copied!', 1500, original);
+        } else {
+          // Fallback: download as PNG
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'screenshot_' + Date.now() + '.png';
+          a.click();
+          URL.revokeObjectURL(url);
+          if (btn) flashBtn(btn, '✓ Downloaded', 1500, original);
+        }
+      } catch (e) {
+        if (btn) flashBtn(btn, '✗ ' + e.message.slice(0,30), 2500, original);
+      }
+    });
+  } catch (e) {
+    if (btn) flashBtn(btn, '✗ ' + e.message.slice(0,30), 2500, original);
+  }
+}
+
+// Copy table — writes BOTH text/html (for Word) and text/plain TSV (for Excel) to clipboard
+async function copyTableInCard(cardId, tableSel, btn, scopeEl) {
+  const root = scopeEl || (cardId ? document.getElementById(cardId) : document);
+  if (!root) return;
+  const table = root.querySelector(tableSel);
+  if (!table) {
+    if (btn) flashBtn(btn, '⚠ no table found', 1800);
+    return;
+  }
+  const original = btn ? btn.innerHTML : null;
+
+  // Build HTML version — clone, strip action buttons + interactive elements
+  const clone = table.cloneNode(true);
+  clone.querySelectorAll('button, .card-actions').forEach(n => n.remove());
+  // Inline a few minimum styles so paste retains alignment
+  const htmlStr = '<meta charset="utf-8">' + clone.outerHTML.replace(
+    /<table/, '<table style="border-collapse:collapse;font-family:Calibri,Arial;font-size:11pt"'
+  ).replace(/<th/g, '<th style="border:1px solid #999;padding:6px 10px;background:#1565c0;color:#fff;font-weight:600;text-align:left"')
+   .replace(/<td/g, '<td style="border:1px solid #999;padding:6px 10px"');
+
+  // Build TSV (tab-separated) for Excel
+  const tsvRows = [];
+  clone.querySelectorAll('tr').forEach(tr => {
+    const cells = [...tr.querySelectorAll('th,td')].map(td => {
+      // collapse whitespace, strip newlines, replace tabs with spaces
+      return (td.innerText || td.textContent || '').replace(/\s+/g,' ').trim();
+    });
+    tsvRows.push(cells.join('\t'));
+  });
+  const tsvStr = tsvRows.join('\n');
+
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      const htmlBlob = new Blob([htmlStr], { type: 'text/html' });
+      const textBlob = new Blob([tsvStr], { type: 'text/plain' });
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+      ]);
+      if (btn) flashBtn(btn, '✓ Copied!', 1500, original);
+    } else if (navigator.clipboard) {
+      // Fallback: text/plain only
+      await navigator.clipboard.writeText(tsvStr);
+      if (btn) flashBtn(btn, '✓ Copied (text)', 1500, original);
+    } else {
+      // Very-old fallback: show in textarea + select
+      const ta = document.createElement('textarea');
+      ta.value = tsvStr;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      if (btn) flashBtn(btn, '✓ Copied', 1500, original);
+    }
+  } catch (e) {
+    if (btn) flashBtn(btn, '✗ ' + e.message.slice(0,30), 2500, original);
+  }
+}
+
+function flashBtn(btn, msg, ms, restore) {
+  const orig = restore || btn.innerHTML;
+  btn.innerHTML = msg;
+  btn.classList.add('success');
+  setTimeout(() => {
+    btn.innerHTML = orig;
+    btn.classList.remove('success');
+  }, ms);
+}
+
+// ── eKYC REVIEW MODULE ──────────────────────────────────────────
+const EKYC_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzmYQzj5_bziseamPHs-59-2rysWSNVHPJzmtfL1OnUzRdekrHXicnBfdLO-Xq2wPZK/exec';
+
+// Block ↔ Circle mapping (from Block_-_Circle.xlsx) — eKYC English block name → Circle
+const EKYC_BLOCK_CIRCLE = {
+  'Tiruvannamalai HQ':'Thiruvannamalai','Tiruvannamalai-1':'Thiruvannamalai','Tiruvannamalai-2':'Thiruvannamalai',
+  'Thurinjapuram':'Thiruvannamalai','Kilpennathur':'Thiruvannamalai','Chengam':'Thiruvannamalai',
+  'Pudhupalayam':'Thiruvannamalai','Thandrampet':'Thiruvannamalai','Kalasapakkam':'Thiruvannamalai',
+  'Polur':'Thiruvannamalai','Jamunamarathur':'Thiruvannamalai','Chetpet':'Thiruvannamalai',
+  'Arani East':'Cheyyar','Arani West':'Cheyyar','Cheyyar':'Cheyyar','Anakavoor':'Cheyyar',
+  'Vembakkam 1':'Cheyyar','Vembakkam 2':'Cheyyar','Vandavasi':'Cheyyar','Pernamallur':'Cheyyar','Thellar':'Cheyyar'
+};
+
+// Tamil ↔ English block name mapping (FPS_Data uses Tamil, eKYC uses English)
+const EKYC_BLOCK_TAMIL_TO_EN = {
+  'திருவண்ணாமலை HQ':'Tiruvannamalai HQ','திருவண்ணாமலை 1':'Tiruvannamalai-1','திருவண்ணாமலை 2':'Tiruvannamalai-2',
+  'துரிஞ்சாபுரம்':'Thurinjapuram','கீழ்ப்பென்னாத்துர்':'Kilpennathur','செங்கம்':'Chengam',
+  'புதுப்பாளையம்':'Pudhupalayam','தண்டராம்பட்டு':'Thandrampet','கலசபாக்கம்':'Kalasapakkam',
+  'போளுர்':'Polur','ஜமுனாமரத்துர்':'Jamunamarathur','சேத்துப்பட்டு':'Chetpet',
+  'ஆரணி கிழக்கு':'Arani East','ஆரணி மேற்கு':'Arani West','செய்யார்':'Cheyyar','அனக்காவூர்':'Anakavoor',
+  'வெம்பாக்கம் 1':'Vembakkam 1','வெம்பாக்கம் 2':'Vembakkam 2','வந்தவாசி':'Vandavasi','பெரணமல்லூர்':'Pernamallur','தெள்ளார்':'Thellar'
+};
+
+let ekycData = [];           // Current loaded shop-level data
+let ekycPrevData = {};        // shopcode → previous % from cloud (for delta)
+let ekycCircle = '';          // Circle filter
+let ekycSelectedBlock = null;
+let ekycSelectedSociety = null;
+let ekycUploadDate = '';
+
+// ── Color band by % ──
+function ekycColor(pct) {
+  if (pct < 0.80) return '#f06060';   // red
+  if (pct < 0.90) return '#f5a623';   // amber
+  if (pct < 0.95) return '#2dd4bf';   // teal
+  return '#3ecf8e';                    // green
+}
+
+// ── Excel parsing ──
+function setupEkycDropzone() {
+  const dz = document.getElementById('ekyc-dropzone');
+  const inp = document.getElementById('ekyc-file-input');
+  if (!dz || !inp || dz.dataset.bound==='1') return;
+  dz.dataset.bound = '1';
+  dz.addEventListener('click', () => inp.click());
+  inp.addEventListener('change', e => { if(e.target.files[0]) handleEkycFile(e.target.files[0]); });
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleEkycFile(e.dataTransfer.files[0]);
+  });
+}
+
+async function handleEkycFile(file) {
+  const status = document.getElementById('ekyc-upload-status');
+  status.innerHTML = `<span style="color:var(--blue)">⏳ Reading ${file.name}...</span>`;
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+
+    // Auto-detect format: prefer 'Thiruvannamalai all Shops' (already filtered + has Block/Society)
+    // fallback: 'Shop Wise' (state file, needs filter + block lookup from FPS_Data)
+    let sheetName = null, formatA = false;
+    const candidates = wb.SheetNames;
+    for (const n of candidates) {
+      if (n.toLowerCase().includes('thiruvannamalai all shops') || n.toLowerCase()==='thiruvannamalai all shops') {
+        sheetName = n; formatA = true; break;
+      }
+    }
+    if (!sheetName) {
+      for (const n of candidates) {
+        if (n.toLowerCase().includes('shop wise') || n.toLowerCase().includes('shopwise')) {
+          sheetName = n; formatA = false; break;
+        }
+      }
+    }
+    if (!sheetName) {
+      status.innerHTML = `<span style="color:var(--red)">❌ Cannot find "Thiruvannamalai all Shops" or "Shop Wise" sheet</span>`;
+      return;
+    }
+
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+    let processed;
+    if (formatA) {
+      processed = parseFormatA(rows);
+    } else {
+      processed = parseFormatB(rows);
+    }
+
+    if (!processed.length) {
+      status.innerHTML = `<span style="color:var(--red)">❌ No Thiruvannamalai shops found in this file</span>`;
+      return;
+    }
+
+    ekycData = processed;
+    ekycUploadDate = new Date().toISOString();
+    // Try to get previous data for delta
+    await loadPreviousEkycSnapshot();
+    renderEkyc();
+    status.innerHTML = `<span style="color:var(--green)">✓ Loaded ${processed.length} shops from "${sheetName}" — click 💾 Save to Sheet to store this snapshot</span>`;
+  } catch (e) {
+    status.innerHTML = `<span style="color:var(--red)">❌ Parse error: ${e.message}</span>`;
+  }
+}
+
+// Format A: "Thiruvannamalai all Shops" — has Block + Society + computed totals
+function parseFormatA(rows) {
+  return rows.filter(r => {
+    const sc = (r['Shopcode']||'').toString().trim();
+    const block = (r['Block']||'').toString().trim();
+    return sc && block;
+  }).map(r => {
+    const considered = parseInt(r['Totally Constidered for e-KYC (AAY+PHH+NPHH)']) || 0;
+    const completed = parseInt(r['E-KYC Completed So far']) || 0;
+    const pct = considered ? (completed/considered) : 0;
+    return {
+      shopcode: (r['Shopcode']||'').toString().trim(),
+      block: (r['Block']||'').toString().trim(),
+      society: (r['Society']||'').toString().trim(),
+      shopname: (r['ShopName']||r['Shop_Name']||'').toString().trim(),
+      considered, completed, pct
+    };
+  });
+}
+
+// Format B: "Shop Wise" state-wide — filter Thiruvannamalai, sum AAY+PHH+NPHH, lookup Block/Society from FPS_Data
+function parseFormatB(rows) {
+  // Build shop → block/society lookup from FPS_Data (English blocks, so use Tamil-to-English mapper)
+  const fpsLookup = {};
+  allData.forEach(r => {
+    const code = g(r,'shopcode');
+    if (code) {
+      const tamilBlock = g(r,'block');
+      const enBlock = EKYC_BLOCK_TAMIL_TO_EN[tamilBlock] || tamilBlock;
+      fpsLookup[code] = {
+        block: enBlock,
+        society: g(r,'society'),
+        shopname: g(r,'shopname')
+      };
+    }
+  });
+
+  return rows.filter(r => {
+    const dist = (r['District']||'').toString().toLowerCase();
+    return dist.includes('thiruvanna') || dist.includes('tiruvanna');
+  }).map(r => {
+    const sc = (r['Shopcode']||'').toString().trim();
+    // Sum AAY + PHH + NPHH
+    const aayConsider = parseInt(r['Considered for eKYC']) || 0;
+    const phhConsider = parseInt(r['Considered \nfor eKYC']) || 0;
+    const nphhConsider = parseInt(r['Considered \nfor eKYC.1']) || 0;
+    const aayDone = parseInt(r['AAY EKYC Completed']) || 0;
+    const phhDone = parseInt(r['PHH EKYC Completed']) || 0;
+    const nphhDone = parseInt(r['NPHH EKYC Completed']) || 0;
+    const considered = aayConsider + phhConsider + nphhConsider;
+    const completed = aayDone + phhDone + nphhDone;
+    const pct = considered ? (completed/considered) : 0;
+    const lookup = fpsLookup[sc] || {};
+    return {
+      shopcode: sc,
+      block: lookup.block || '(unknown)',
+      society: lookup.society || '(unknown)',
+      shopname: lookup.shopname || (r['Shop_Name']||'').toString().trim(),
+      considered, completed, pct
+    };
+  }).filter(r => r.shopcode);
+}
+
+// ── Render the 3 tables ──
+function renderEkyc() {
+  if (!ekycData.length) {
+    document.getElementById('ekyc-controls').style.display = 'none';
+    document.getElementById('ekyc-blocks-card').style.display = 'none';
+    document.getElementById('ekyc-societies-card').style.display = 'none';
+    document.getElementById('ekyc-shops-card').style.display = 'none';
+    document.getElementById('ekyc-empty-state').style.display = 'block';
+    return;
+  }
+  document.getElementById('ekyc-empty-state').style.display = 'none';
+  document.getElementById('ekyc-controls').style.display = 'block';
+  document.getElementById('ekyc-blocks-card').style.display = 'block';
+
+  // Apply circle filter + editor block restriction
+  let filtered = ekycData;
+  if (ekycCircle) filtered = filtered.filter(r => EKYC_BLOCK_CIRCLE[r.block] === ekycCircle);
+  if (currentUser?.role === 'editor' && currentUser.block) {
+    const enBlock = EKYC_BLOCK_TAMIL_TO_EN[currentUser.block] || currentUser.block;
+    filtered = filtered.filter(r => r.block === enBlock);
+  }
+
+  renderEkycSummaryStrip(filtered);
+  renderEkycBlocks(filtered);
+
+  if (ekycSelectedBlock) {
+    const blockRows = filtered.filter(r => r.block === ekycSelectedBlock);
+    if (blockRows.length) {
+      renderEkycSocieties(blockRows);
+      document.getElementById('ekyc-societies-card').style.display = 'block';
+    } else {
+      ekycSelectedBlock = null;
+      document.getElementById('ekyc-societies-card').style.display = 'none';
+    }
+  } else {
+    document.getElementById('ekyc-societies-card').style.display = 'none';
+  }
+
+  if (ekycSelectedBlock && ekycSelectedSociety) {
+    const socRows = filtered.filter(r => r.block === ekycSelectedBlock && r.society === ekycSelectedSociety);
+    if (socRows.length) {
+      renderEkycShops(socRows);
+      document.getElementById('ekyc-shops-card').style.display = 'block';
+    } else {
+      ekycSelectedSociety = null;
+      document.getElementById('ekyc-shops-card').style.display = 'none';
+    }
+  } else {
+    document.getElementById('ekyc-shops-card').style.display = 'none';
+  }
+  if (typeof attachCardActions === 'function') setTimeout(attachCardActions, 30);
+}
+
+function renderEkycSummaryStrip(rows) {
+  const totC = rows.reduce((s,r)=>s+r.considered,0);
+  const totD = rows.reduce((s,r)=>s+r.completed,0);
+  const distPct = totC ? (totD/totC*100) : 0;
+  const blockCount = new Set(rows.map(r=>r.block)).size;
+  const socCount = new Set(rows.map(r=>r.block+'|'+r.society)).size;
+
+  const html = [
+    {label:'மாவட்டம் மொத்தம்', val: distPct.toFixed(1)+'%', color:ekycColor(distPct/100)},
+    {label:'கடைகள்', val: rows.length.toLocaleString(), color:'var(--blue)'},
+    {label:'Blocks', val: blockCount, color:'var(--purple)'},
+    {label:'Societies', val: socCount, color:'var(--teal)'},
+    {label:'Considered', val: totC.toLocaleString(), color:'var(--text)'},
+    {label:'Completed', val: totD.toLocaleString(), color:'var(--green)'},
+    {label:'Pending', val:(totC-totD).toLocaleString(), color:'var(--red)'},
+  ].map(b => `<div class="ekyc-stat-box">
+    <div class="ekyc-stat-label">${b.label}</div>
+    <div class="ekyc-stat-value" style="color:${b.color}">${b.val}</div>
+  </div>`).join('');
+
+  document.getElementById('ekyc-summary-strip').innerHTML = html;
+}
+
+function aggregateBy(rows, key) {
+  const map = {};
+  rows.forEach(r => {
+    const k = key(r);
+    if (!map[k]) map[k] = { key:k, considered:0, completed:0, shops:0 };
+    map[k].considered += r.considered;
+    map[k].completed += r.completed;
+    map[k].shops += 1;
+  });
+  return Object.values(map).map(o => ({...o, pct: o.considered ? o.completed/o.considered : 0}));
+}
+
+function deltaCell(currPct, prevPct) {
+  if (prevPct === undefined || prevPct === null) return '<span class="ekyc-delta-same">—</span>';
+  const d = (currPct - prevPct) * 100;
+  if (Math.abs(d) < 0.05) return '<span class="ekyc-delta-same">≈ 0</span>';
+  const cls = d > 0 ? 'ekyc-delta-up' : 'ekyc-delta-down';
+  const arrow = d > 0 ? '▲' : '▼';
+  return `<span class="${cls}">${arrow} ${Math.abs(d).toFixed(2)}%</span>`;
+}
+
+function progressBarHtml(pct) {
+  const w = Math.round(pct * 100);
+  const c = ekycColor(pct);
+  return `<div class="ekyc-progress"><div class="ekyc-progress-fill" style="width:${w}%;background:${c}"></div></div>`;
+}
+
+function renderEkycBlocks(rows) {
+  const blocks = aggregateBy(rows, r => r.block).sort((a,b)=>a.pct-b.pct);  // worst first
+
+  // For block-level delta: aggregate ekycPrevData by block (only if we have prev data)
+  // ekycPrevData is by shopcode — we'll compute prev-block-pct lazily
+  const prevByBlock = {};
+  if (Object.keys(ekycPrevData).length) {
+    const prevAgg = {};
+    ekycData.forEach(r => {
+      const prev = ekycPrevData[r.shopcode];
+      if (prev !== undefined) {
+        if (!prevAgg[r.block]) prevAgg[r.block] = { considered:0, completed:0 };
+        prevAgg[r.block].considered += r.considered;
+        prevAgg[r.block].completed += r.considered * prev;  // approximate prev completed
+      }
+    });
+    Object.entries(prevAgg).forEach(([b,o]) => {
+      prevByBlock[b] = o.considered ? o.completed/o.considered : null;
+    });
+  }
+
+  const tbody = document.getElementById('ekyc-blocks-tbody');
+  tbody.innerHTML = blocks.map((b,i) => {
+    const circle = EKYC_BLOCK_CIRCLE[b.key] || '—';
+    const pctNum = b.pct * 100;
+    const isSel = b.key === ekycSelectedBlock;
+    return `<tr class="ekyc-row ${isSel?'selected':''}" onclick="selectEkycBlock('${b.key.replace(/'/g,"\\'")}')">
+      <td class="td-mono" style="color:var(--muted)">${i+1}</td>
+      <td style="font-weight:600">${b.key}</td>
+      <td><span class="badge ${circle==='Thiruvannamalai'?'badge-yes':'badge-part'}" style="font-size:9px">${circle}</span></td>
+      <td class="td-mono">${b.considered.toLocaleString()}</td>
+      <td class="td-mono">${b.completed.toLocaleString()}</td>
+      <td>${progressBarHtml(b.pct)}</td>
+      <td><span class="ekyc-pct" style="color:${ekycColor(b.pct)}">${pctNum.toFixed(2)}%</span></td>
+      <td class="td-mono" style="font-size:10px">${deltaCell(b.pct, prevByBlock[b.key])}</td>
+      <td style="font-size:10px;color:var(--muted)">${isSel?'▼ open':'▶ click'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderEkycSocieties(rows) {
+  const societies = aggregateBy(rows, r => r.society).sort((a,b)=>a.pct-b.pct);
+  document.getElementById('ekyc-societies-title').textContent = `📍 Societies in ${ekycSelectedBlock} (worst → best)`;
+
+  const tbody = document.getElementById('ekyc-societies-tbody');
+  tbody.innerHTML = societies.map((s,i) => {
+    const isSel = s.key === ekycSelectedSociety;
+    const pctNum = s.pct * 100;
+    return `<tr class="ekyc-row ${isSel?'selected':''}" onclick="selectEkycSociety('${s.key.replace(/'/g,"\\'")}')">
+      <td class="td-mono" style="color:var(--muted)">${i+1}</td>
+      <td style="font-weight:600">${s.key}</td>
+      <td class="td-mono">${s.considered.toLocaleString()}</td>
+      <td class="td-mono">${s.completed.toLocaleString()}</td>
+      <td>${progressBarHtml(s.pct)}</td>
+      <td><span class="ekyc-pct" style="color:${ekycColor(s.pct)}">${pctNum.toFixed(2)}%</span></td>
+      <td class="td-mono" style="font-size:10px">—</td>
+      <td class="td-mono">${s.shops}</td>
+      <td style="font-size:10px;color:var(--muted)">${isSel?'▼ open':'▶ click'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderEkycShops(rows) {
+  const sorted = rows.slice().sort((a,b)=>a.pct-b.pct);
+  document.getElementById('ekyc-shops-title').textContent = `🏪 Shops in ${ekycSelectedSociety} (worst → best)`;
+
+  const tbody = document.getElementById('ekyc-shops-tbody');
+  tbody.innerHTML = sorted.map((r,i) => {
+    const pctNum = r.pct * 100;
+    const prev = ekycPrevData[r.shopcode];
+    return `<tr>
+      <td class="td-mono" style="color:var(--muted)">${i+1}</td>
+      <td class="td-mono" style="color:var(--teal)">${r.shopcode}</td>
+      <td>${r.shopname}</td>
+      <td class="td-mono">${r.considered.toLocaleString()}</td>
+      <td class="td-mono">${r.completed.toLocaleString()}</td>
+      <td>${progressBarHtml(r.pct)}</td>
+      <td><span class="ekyc-pct" style="color:${ekycColor(r.pct)}">${pctNum.toFixed(2)}%</span></td>
+      <td class="td-mono" style="font-size:10px">${deltaCell(r.pct, prev)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── User actions ──
+function setEkycCircle(circle) {
+  ekycCircle = circle;
+  document.querySelectorAll('.ekyc-circle-btn').forEach(b => {
+    b.classList.toggle('ekyc-circle-active', b.dataset.circle === circle);
+  });
+  // If selected block is no longer in this circle, clear it
+  if (ekycSelectedBlock && circle && EKYC_BLOCK_CIRCLE[ekycSelectedBlock] !== circle) {
+    ekycSelectedBlock = null;
+    ekycSelectedSociety = null;
+  }
+  renderEkyc();
+}
+
+function selectEkycBlock(block) {
+  ekycSelectedBlock = (ekycSelectedBlock === block) ? null : block;
+  ekycSelectedSociety = null;
+  renderEkyc();
+  // Smooth scroll to societies card
+  if (ekycSelectedBlock) {
+    setTimeout(() => document.getElementById('ekyc-societies-card').scrollIntoView({behavior:'smooth',block:'start'}), 100);
+  }
+}
+
+function selectEkycSociety(society) {
+  ekycSelectedSociety = (ekycSelectedSociety === society) ? null : society;
+  renderEkyc();
+  if (ekycSelectedSociety) {
+    setTimeout(() => document.getElementById('ekyc-shops-card').scrollIntoView({behavior:'smooth',block:'start'}), 100);
+  }
+}
+
+// ── Save to Google Sheet ──
+async function saveEkycToSheet() {
+  if (!ekycData.length) { alert('No data to save'); return; }
+  if (currentUser?.role !== 'master') { alert('Only Master can save'); return; }
+
+  const status = document.getElementById('ekyc-upload-status');
+  status.innerHTML = `<span style="color:var(--blue)">⏳ Saving ${ekycData.length} shops to Google Sheet...</span>`;
+
+  const payload = {
+    action: 'saveEKYC',
+    timestamp: ekycUploadDate || new Date().toISOString(),
+    rows: ekycData.map(r => ({
+      shopcode: r.shopcode, block: r.block, society: r.society,
+      shopname: r.shopname, considered: r.considered,
+      completed: r.completed, percentage: r.pct
+    }))
+  };
+
+  try {
+    await fetch(EKYC_SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    // no-cors = response opaque, assume success
+    status.innerHTML = `<span style="color:var(--green)">✓ Saved! (${ekycData.length} rows submitted) — refresh page to confirm in eKYC_History sheet</span>`;
+  } catch (e) {
+    status.innerHTML = `<span style="color:var(--red)">❌ Save failed: ${e.message}</span>`;
+  }
+}
+
+// ── Load previous snapshot from cloud (for delta calculation) ──
+async function loadPreviousEkycSnapshot() {
+  // Read eKYC_History sheet from same spreadsheet that hosts the Apps Script
+  // The Apps Script's host sheet ID is the same as CONFIG.SHEET_ID per the prompt setup
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/eKYC_History?key=${CONFIG.API_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.values || json.values.length < 2) return;
+
+    // Headers: UploadDate, Shopcode, Block, Society, ShopName, Totally_Considered, Completed, Percentage
+    const headers = json.values[0];
+    const rows = json.values.slice(1);
+    // Find LATEST snapshot (most recent UploadDate that is not the current one)
+    const dateIdx = headers.indexOf('UploadDate');
+    const codeIdx = headers.indexOf('Shopcode');
+    const pctIdx = headers.indexOf('Percentage');
+    if (dateIdx<0 || codeIdx<0 || pctIdx<0) return;
+
+    const dates = [...new Set(rows.map(r=>r[dateIdx]))].sort().reverse();
+    const latestDate = dates.find(d => d !== ekycUploadDate) || dates[0];
+    if (!latestDate) return;
+
+    ekycPrevData = {};
+    rows.filter(r => r[dateIdx] === latestDate).forEach(r => {
+      ekycPrevData[r[codeIdx]] = parseFloat(r[pctIdx]) || 0;
+    });
+  } catch (e) {
+    // silent — delta column will just show "—"
+  }
+}
+
+async function loadEkycFromCloud() {
+  const status = document.getElementById('ekyc-upload-status');
+  if (status) status.innerHTML = `<span style="color:var(--blue)">⏳ Loading latest snapshot from Google Sheet...</span>`;
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/eKYC_History?key=${CONFIG.API_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('eKYC_History sheet not accessible');
+    const json = await res.json();
+    if (!json.values || json.values.length < 2) {
+      if (status) status.innerHTML = `<span style="color:var(--muted)">No saved data yet — Master needs to upload + save</span>`;
+      return;
+    }
+    const headers = json.values[0];
+    const rows = json.values.slice(1);
+    const idx = (h) => headers.indexOf(h);
+    const di = idx('UploadDate'), sc = idx('Shopcode'), bl = idx('Block'),
+          so = idx('Society'), sn = idx('ShopName'),
+          tc = idx('Totally_Considered'), cp = idx('Completed'), pc = idx('Percentage');
+
+    // Get the LATEST snapshot
+    const dates = [...new Set(rows.map(r => r[di]))].sort().reverse();
+    if (!dates.length) return;
+    const latest = dates[0];
+    ekycUploadDate = latest;
+
+    // Get the second-latest for delta
+    const prevDate = dates[1];
+    ekycPrevData = {};
+    if (prevDate) {
+      rows.filter(r => r[di] === prevDate).forEach(r => {
+        ekycPrevData[r[sc]] = parseFloat(r[pc]) || 0;
+      });
+    }
+
+    ekycData = rows.filter(r => r[di] === latest).map(r => {
+      const considered = parseInt(r[tc]) || 0;
+      const completed = parseInt(r[cp]) || 0;
+      return {
+        shopcode: r[sc] || '', block: r[bl] || '', society: r[so] || '',
+        shopname: r[sn] || '', considered, completed,
+        pct: considered ? completed/considered : (parseFloat(r[pc]) || 0)
+      };
+    });
+
+    renderEkyc();
+    if (status) status.innerHTML = `<span style="color:var(--green)">✓ Loaded ${ekycData.length} shops from snapshot ${latest.slice(0,10)}</span>`;
+  } catch (e) {
+    if (status) status.innerHTML = `<span style="color:var(--red)">❌ ${e.message}</span>`;
+  }
+}
+
+// ── Excel export ──
+function exportEkycExcel() {
+  if (!ekycData.length) { alert('No data to export'); return; }
+  let filtered = ekycData;
+  if (ekycCircle) filtered = filtered.filter(r => EKYC_BLOCK_CIRCLE[r.block] === ekycCircle);
+  if (currentUser?.role === 'editor' && currentUser.block) {
+    const enBlock = EKYC_BLOCK_TAMIL_TO_EN[currentUser.block] || currentUser.block;
+    filtered = filtered.filter(r => r.block === enBlock);
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Block-wise
+  const blocks = aggregateBy(filtered, r=>r.block).sort((a,b)=>a.pct-b.pct);
+  const bData = [['#','Block','Circle','Considered','Completed','Pending','Percentage']];
+  blocks.forEach((b,i)=>bData.push([i+1, b.key, EKYC_BLOCK_CIRCLE[b.key]||'—', b.considered, b.completed, b.considered-b.completed, +(b.pct*100).toFixed(2)]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bData), 'Block-wise');
+
+  // Sheet 2: Society-wise
+  const sData = [['#','Block','Society','Shops','Considered','Completed','Pending','Percentage']];
+  const socAgg = {};
+  filtered.forEach(r => {
+    const k = r.block+'|'+r.society;
+    if (!socAgg[k]) socAgg[k] = { block:r.block, society:r.society, shops:0, considered:0, completed:0 };
+    socAgg[k].shops++; socAgg[k].considered+=r.considered; socAgg[k].completed+=r.completed;
+  });
+  Object.values(socAgg).map(o=>({...o, pct: o.considered?o.completed/o.considered:0}))
+    .sort((a,b)=>a.pct-b.pct)
+    .forEach((o,i)=>sData.push([i+1, o.block, o.society, o.shops, o.considered, o.completed, o.considered-o.completed, +(o.pct*100).toFixed(2)]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sData), 'Society-wise');
+
+  // Sheet 3: Shop-wise
+  const shData = [['#','Block','Society','Shop Code','Shop Name','Considered','Completed','Pending','Percentage']];
+  filtered.slice().sort((a,b)=>a.pct-b.pct).forEach((r,i)=>
+    shData.push([i+1, r.block, r.society, r.shopcode, r.shopname, r.considered, r.completed, r.considered-r.completed, +(r.pct*100).toFixed(2)])
+  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(shData), 'Shop-wise');
+
+  const fnSuffix = currentUser?.role==='editor' ? `_${(currentUser.block||'block').replace(/[^\w]/g,'_')}` : '';
+  XLSX.writeFile(wb, `FPS_eKYC_Review${fnSuffix}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ── PDF export (uses browser print) ──
+function exportEkycPdf() {
+  if (!ekycData.length) { alert('No data to export'); return; }
+  let filtered = ekycData;
+  if (ekycCircle) filtered = filtered.filter(r => EKYC_BLOCK_CIRCLE[r.block] === ekycCircle);
+  if (currentUser?.role === 'editor' && currentUser.block) {
+    const enBlock = EKYC_BLOCK_TAMIL_TO_EN[currentUser.block] || currentUser.block;
+    filtered = filtered.filter(r => r.block === enBlock);
+  }
+  const blocks = aggregateBy(filtered, r=>r.block).sort((a,b)=>a.pct-b.pct);
+  const totC = filtered.reduce((s,r)=>s+r.considered,0);
+  const totD = filtered.reduce((s,r)=>s+r.completed,0);
+  const totP = totC ? (totD/totC*100) : 0;
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>eKYC Block-wise Report</title>
+    <style>
+      body{font-family:Arial,sans-serif;margin:20px;color:#222}
+      h1{font-size:18px;margin:0 0 4px}
+      .sub{color:#666;font-size:11px;margin-bottom:16px}
+      table{border-collapse:collapse;width:100%;font-size:11px}
+      th,td{border:1px solid #999;padding:6px 8px;text-align:left}
+      th{background:#1565c0;color:#fff;font-weight:600}
+      tr:nth-child(even){background:#f5f5f5}
+      .num{text-align:right;font-family:monospace}
+      .total{font-weight:700;background:#e3f2fd}
+      .pct-bad{color:#c62828;font-weight:700}
+      .pct-mid{color:#ef6c00;font-weight:700}
+      .pct-ok{color:#2e7d32;font-weight:700}
+    </style></head><body>
+    <h1>🏛️ Thiruvannamalai District — e-KYC Block-wise Report</h1>
+    <div class="sub">As on ${new Date().toLocaleDateString()} ${ekycCircle?' · Circle: '+ekycCircle:' · All Circles'}${currentUser?.role==='editor'?' · Block: '+currentUser.block:''} · Sorted worst → best</div>
+    <table>
+      <thead><tr><th>#</th><th>Block</th><th>Circle</th><th>Considered</th><th>Completed</th><th>Pending</th><th>%</th></tr></thead>
+      <tbody>
+        ${blocks.map((b,i)=>{
+          const p = b.pct*100;
+          const cls = p<80?'pct-bad':p<90?'pct-mid':'pct-ok';
+          return `<tr><td>${i+1}</td><td>${b.key}</td><td>${EKYC_BLOCK_CIRCLE[b.key]||'—'}</td>
+            <td class="num">${b.considered.toLocaleString()}</td>
+            <td class="num">${b.completed.toLocaleString()}</td>
+            <td class="num">${(b.considered-b.completed).toLocaleString()}</td>
+            <td class="num ${cls}">${p.toFixed(2)}%</td></tr>`;
+        }).join('')}
+        <tr class="total"><td colspan="3">TOTAL</td>
+          <td class="num">${totC.toLocaleString()}</td>
+          <td class="num">${totD.toLocaleString()}</td>
+          <td class="num">${(totC-totD).toLocaleString()}</td>
+          <td class="num">${totP.toFixed(2)}%</td></tr>
+      </tbody>
+    </table>
+    <scr` + `ipt>setTimeout(()=>window.print(),500);</scr` + `ipt>
+    </body></html>`);
+  w.document.close();
+}
+
 function switchView(name) {
   // Defense-in-depth: editors cannot access master-only views
   if (currentUser?.role === 'editor' && ['access','compare','taluk','block'].includes(name)) {
     name = 'hierarchy';
   }
-  const views=['overview','hierarchy','taluk','block','data','access','audit','compare'];
+  const views=['overview','hierarchy','taluk','block','data','access','audit','compare','ekyc'];
   views.forEach(v=>{const el=document.getElementById('view-'+v);if(el)el.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('view-'+name);
@@ -2373,6 +3414,30 @@ function switchView(name) {
   if(name==='audit') loadAudit();
   if(name==='access') renderAccessControl();
   if(name==='data') applyFilters();
+  if(name==='ekyc') {
+    setupEkycDropzone();
+    // For editors: hide upload card, show banner, auto-load latest from cloud
+    if (currentUser?.role === 'editor') {
+      document.getElementById('ekyc-upload-card').style.display = 'none';
+      document.getElementById('ekyc-editor-banner').style.display = 'block';
+      const saveBtn = document.getElementById('ekyc-save-btn');
+      if (saveBtn) saveBtn.style.display = 'none';
+      if (!ekycData.length) loadEkycFromCloud();
+      else renderEkyc();
+    } else {
+      // Master: show upload card, hide banner
+      document.getElementById('ekyc-upload-card').style.display = 'block';
+      document.getElementById('ekyc-editor-banner').style.display = 'none';
+      // If we already have data loaded earlier in session, keep it
+      if (ekycData.length) renderEkyc();
+      else {
+        // Try cloud first (may have last upload from previous session)
+        loadEkycFromCloud();
+      }
+    }
+  }
+  // Re-attach card actions in case newly-visible cards weren't wired yet
+  if (typeof attachCardActions === 'function') setTimeout(attachCardActions, 50);
 }
 
 document.addEventListener('keydown',e=>{
