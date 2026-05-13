@@ -283,7 +283,7 @@ tr:last-child td{border-bottom:none}
       <div class="tuser" id="user-label-badge"></div>
       <button class="btn btn-outline" onclick="exportCSV()" id="btn-csv" style="display:none">CSV</button>
       <button class="btn btn-outline" onclick="exportExcel()" id="btn-excel" style="display:none;color:var(--green);border-color:#3ecf8e44">⬇ Excel</button>
-      <button class="btn btn-outline" onclick="downloadAuditExcel()" id="btn-audit-dl" style="display:none;color:var(--amber);border-color:#f5a62344">⬇ Audit</button>
+      <button class="btn btn-outline" onclick="downloadAuditExcel()" id="btn-audit-dl" style="display:none;color:var(--amber);border-color:#f5a62344">⬇ திருத்த வரலாறு</button>
       <button class="btn btn-outline" onclick="loadData()">↻</button>
       <button class="btn btn-outline" id="btn-logout-placeholder" onclick="doLogout()" style="color:var(--red)">Logout</button>
     </div>
@@ -375,13 +375,13 @@ tr:last-child td{border-bottom:none}
 
     <!-- TABS -->
     <div class="tabs" id="main-tabs">
-      <button class="tab active" onclick="switchView('overview')" id="tab-overview">Overview</button>
+      <button class="tab active" onclick="switchView('overview')" id="tab-overview">மேற்பார்வை</button>
       <button class="tab" onclick="switchView('hierarchy')" id="tab-hierarchy">📊 இதுவரை பதிவு செய்யப்பட்டுள்ளவற்றின் விவரம்</button>
       <button class="tab" onclick="switchView('taluk')" id="tab-taluk">Taluk</button>
       <button class="tab" onclick="switchView('block')" id="tab-block">Block</button>
-      <button class="tab" onclick="switchView('data')" id="tab-data">✏️ தரவுகளை மாற்றுவதற்கு</button>
+      <button class="tab" onclick="switchView('data')" id="tab-data">✏️ தரவுகளில் திருத்தம் மேற்கொள்</button>
       <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access Control</button>
-      <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">Audit</button>
+      <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">திருத்தம் மேற்கொள்ளப்பட்டவற்றின் விவரம்</button>
       <button class="tab" onclick="switchView('compare')" id="tab-compare" style="display:none">📊 ஒப்பிடு பார்வை</button>
       <button class="tab" onclick="switchView('ekyc')" id="tab-ekyc">📋 e-KYC Review</button>
     </div>
@@ -877,6 +877,7 @@ function doLogin() {
     document.getElementById('tab-overview').style.display = '';      // editors get Overview now (their own block)
     document.getElementById('tab-access').style.display   = 'none';  // RESTRICTED
     document.getElementById('tab-compare').style.display  = 'none';  // RESTRICTED
+    document.getElementById('tab-ekyc').style.display     = 'none';  // RESTRICTED — master uploads only
     // Audit tab IS visible for editors (read-only) — show it explicitly
     document.getElementById('tab-audit').style.display    = '';
     document.getElementById('editor-hero').style.display='block';
@@ -2123,8 +2124,20 @@ function renderDataTable() {
         <td colspan="13" style="background:linear-gradient(90deg,#1e2a4a 0%,#1a2332 100%);
             border-top:2px solid var(--blue);border-bottom:1px solid var(--border);
             padding:7px 12px;font-size:11px;font-weight:600;color:var(--blue)">
-          📍 ${blk} → <span style="color:var(--teal)">${soc||'—'}</span>${lockIcon}
-          <span style="color:var(--muted);font-weight:400;margin-left:8px">— ${socCount} கடை${socCount>1?'கள்':''}</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>📍 ${blk} → <span style="color:var(--teal)">${soc||'—'}</span>${lockIcon}
+            <span style="color:var(--muted);font-weight:400;margin-left:8px">— ${socCount} கடை${socCount>1?'கள்':''}</span></span>
+            <span style="margin-left:auto;display:flex;gap:6px">
+              <button onclick="openAddShop('${blk.replace(/'/g,"\\'")}','${(soc||'').replace(/'/g,"\\'")}',event)"
+                style="background:#3ecf8e22;border:1px solid #3ecf8e55;color:var(--green);border-radius:6px;padding:3px 10px;font-size:10px;cursor:pointer;font-family:inherit;font-weight:600">
+                ➕ புதிய கடை
+              </button>
+              <button onclick="downloadSocietyExcel('${blk.replace(/'/g,"\\'")}','${(soc||'').replace(/'/g,"\\'")}',event)"
+                style="background:#f5a62322;border:1px solid #f5a62355;color:var(--amber);border-radius:6px;padding:3px 10px;font-size:10px;cursor:pointer;font-family:inherit;font-weight:600">
+                ⬇ Excel
+              </button>
+            </span>
+          </div>
         </td>
       </tr>`;
       lastSociety = soc;
@@ -2256,6 +2269,136 @@ async function deleteRow(rowNum, btn) {
 }
 
 function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
+
+// ── ADD NEW SHOP ──────────────────────────────────────────────
+let addShopBlock = '';   // locked block for new-shop form
+let addShopSociety = ''; // locked society for new-shop form
+
+function openAddShop(block, society, event) {
+  if (event) event.stopPropagation();
+  // Respect finalise locks
+  if (finaliseStatus['block:'+block]) {
+    alert(block + ' block finalised ஆகிவிட்டது — புதிய கடை சேர்க்க முடியாது'); return;
+  }
+  if (finaliseStatus['society:'+society]) {
+    alert(society + ' society finalised ஆகிவிட்டது — புதிய கடை சேர்க்க முடியாது'); return;
+  }
+  addShopBlock = block;
+  addShopSociety = society;
+  editRowNum = -1; // signal: this is ADD, not EDIT
+
+  document.getElementById('modal-title-text').textContent = '➕ புதிய கடை — ' + society;
+  document.getElementById('modal-locked-notice').style.display = 'none';
+
+  // Find a sample row from this block to prefill taluk, mla, mp from
+  const sample = allData.find(r => g(r,'block')===block && g(r,'society')===society)
+               || allData.find(r => g(r,'block')===block);
+
+  const prefill = {
+    shopname: '', shopcode: '',
+    society: society, block: block,
+    taluk: sample ? g(sample,'taluk') : '',
+    mla: sample ? g(sample,'mla') : '',
+    mp: sample ? g(sample,'mp') : '',
+    agency: sample ? g(sample,'agency') : 'Cooperative',
+    timetype: '', cards: '', pos: '', posother: '',
+    building: '', buildingname: '', seller: '', phone: '',
+    area: sample ? g(sample,'area') : '', godown: '', opendays: '', remarks: ''
+  };
+
+  const fields = document.getElementById('modal-fields');
+  fields.innerHTML = EDIT_FIELDS.map(([key, colLabel]) => {
+    const colKey = COLS[key] || colLabel;
+    const val = prefill[key] || '';
+    const locked = (key === 'block' || key === 'society');
+    const opts = EDIT_DROPDOWNS[colKey];
+
+    if (locked) {
+      return `<div class="modal-field"><label>${colKey}</label>
+        <input id="ef-${key}" value="${val.replace(/"/g,'&quot;')}" readonly
+          style="background:#1e2a4a;border-color:var(--blue);color:var(--blue);cursor:not-allowed;opacity:.9;font-weight:600">
+        <span style="font-size:9px;color:var(--blue);margin-top:2px;display:block">🔒 Locked to this ${key}</span>
+      </div>`;
+    }
+    if (opts) {
+      return `<div class="modal-field"><label>${colKey}</label>
+        <select id="ef-${key}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit">
+          <option value="">— தேர்வு செய்யவும் —</option>
+          ${opts.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
+        </select></div>`;
+    }
+    return `<div class="modal-field"><label>${colKey}</label>
+      <input id="ef-${key}" value="${val.replace(/"/g,'&quot;')}" placeholder="${colLabel}"></div>`;
+  }).join('');
+
+  const actions = document.getElementById('modal-actions');
+  actions.innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal()">ரத்து</button>
+    <button class="btn" style="background:var(--green);color:#000;font-weight:700" onclick="saveNewShop()">➕ சேமி</button>`;
+
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+async function saveNewShop() {
+  const newRow = {};
+  let missing = [];
+
+  EDIT_FIELDS.forEach(([key, colLabel]) => {
+    const el = document.getElementById('ef-'+key);
+    if (!el) return;
+    const colKey = COLS[key] || colLabel;
+    const val = el.value.trim();
+    newRow[colKey] = val;
+    // Require at minimum: shopname, shopcode, society, block
+    if (['shopname','shopcode'].includes(key) && !val) missing.push(colKey);
+  });
+
+  // Force locked values
+  newRow[COLS['block']] = addShopBlock;
+  newRow[COLS['society']] = addShopSociety;
+
+  if (missing.length) {
+    alert('தேவையான தகவல்கள் இல்லை: ' + missing.join(', '));
+    return;
+  }
+
+  // Build complete ordered row matching COLS order
+  const orderedRow = Object.values(COLS).map(col => newRow[col] || '');
+
+  await sendToScript({
+    action: 'appendRow',
+    row: orderedRow,
+    editor: currentUser.label,
+    timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
+  });
+
+  // Add the new row to allData in memory so it appears immediately
+  const fakeRow = {};
+  Object.entries(COLS).forEach(([key, col]) => { fakeRow[col] = newRow[col] || ''; });
+  fakeRow._row = Math.max(...allData.map(r=>r._row||0)) + 1;
+  fakeRow[COLS['serial']] = fakeRow._row;
+  allData.push(fakeRow);
+
+  closeModal();
+  applyFilters();
+  const pageBeforeSave = currentPage;
+  const maxPage = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+  currentPage = Math.min(pageBeforeSave, maxPage);
+  renderDataTable();
+
+  // Blink the new row
+  const newRowNum = fakeRow._row;
+  setTimeout(() => {
+    const tbody = document.getElementById('data-tbody');
+    if (!tbody) return;
+    const rowEl = tbody.querySelector(`tr[data-row="${newRowNum}"]`);
+    if (rowEl) {
+      rowEl.scrollIntoView({behavior:'smooth', block:'center'});
+      rowEl.classList.add('row-saved-blink');
+      setTimeout(() => rowEl.classList.remove('row-saved-blink'), 2400);
+    }
+  }, 80);
+}
 
 async function saveEdit() {
   if(editRowNum<0) return;
@@ -2472,6 +2615,80 @@ async function sendToScript(payload) {
 
 // ── EXPORT ─────────────────────────────────────────────────
 // ── EXCEL DOWNLOAD ─────────────────────────────────────────
+// ── SOCIETY-LEVEL EXCEL WITH SIGN-OFF ──────────────────────────
+function downloadSocietyExcel(block, society, event) {
+  if (event) event.stopPropagation();
+  const rows = allData.filter(r => g(r,'block')===block && g(r,'society')===society);
+  if (!rows.length) { alert('இந்த society-ல் கடைகள் இல்லை'); return; }
+
+  const sorted = rows.slice().sort((a,b) =>
+    (parseInt(g(a,'serial'))||0) - (parseInt(g(b,'serial'))||0)
+  );
+
+  // Header row
+  const headers = [
+    'வ.எண்', 'கடை குறியீடு', 'கடை பெயர்', 'நேர வகை',
+    'குடும்ப அட்டைகள்', 'PoS', 'கட்டிட வகை',
+    'விற்பனையாளர்', 'கைபேசி', 'அமைவிடம்', 'கிடங்கு', 'திறந்த நாட்கள்', 'குறிப்பு'
+  ];
+
+  const dataRows = sorted.map((r, i) => [
+    i+1,
+    g(r,'shopcode'), g(r,'shopname'), g(r,'timetype'),
+    g(r,'cards'), g(r,'pos'), g(r,'building'),
+    g(r,'seller'), g(r,'phone'), g(r,'area'),
+    g(r,'godown'), g(r,'opendays'), g(r,'remarks')
+  ]);
+
+  // Sign-off rows (blank row + two sign columns)
+  const blankRow = Array(13).fill('');
+  const signRow1 = Array(13).fill('');
+  const signRow2 = Array(13).fill('');
+  const signRow3 = Array(13).fill('');
+  signRow1[0] = 'செயலாளர்/செயலாட்சியார்';
+  signRow1[8] = 'மு.நி.ஆ/கூ.சா.ப';
+  signRow2[0] = society;                  // society name under left signature
+  signRow2[8] = block;                    // block name under right signature
+
+  const allRows = [headers, ...dataRows, blankRow, blankRow, signRow1, signRow2, signRow3];
+
+  const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+  // Style the header row
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cellRef = XLSX.utils.encode_cell({r:0, c});
+    if (!ws[cellRef]) continue;
+    ws[cellRef].s = {
+      fill: {fgColor:{rgb:'1565C0'}},
+      font: {bold:true, color:{rgb:'FFFFFF'}},
+      alignment: {horizontal:'center'}
+    };
+  }
+
+  // Set column widths
+  ws['!cols'] = [
+    {wch:6},{wch:14},{wch:28},{wch:12},{wch:14},{wch:10},{wch:16},{wch:18},{wch:14},{wch:12},{wch:16},{wch:14},{wch:20}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Society Details');
+
+  // Title row at top (insert before data)
+  const titleWs = XLSX.utils.aoa_to_sheet([
+    [`${block} — ${society} — கடைகளின் விவரம்`],
+    [`மொத்த கடைகள்: ${sorted.length} | தேதி: ${new Date().toLocaleDateString('ta-IN')}`],
+    [], // blank separator
+    ...allRows
+  ]);
+  titleWs['!cols'] = ws['!cols'];
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, titleWs, 'Society Details');
+
+  const safeSoc = society.replace(/[^\w\u0B80-\u0BFF]/g,'_').slice(0,20);
+  XLSX.writeFile(wb2, `FPS_${safeSoc}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
 function exportExcel() {
   const baseData = filteredData.length ? filteredData : allData;
   const src = currentUser?.role==='editor'
@@ -3399,7 +3616,7 @@ function exportEkycPdf() {
 
 function switchView(name) {
   // Defense-in-depth: editors cannot access master-only views
-  if (currentUser?.role === 'editor' && ['access','compare','taluk','block'].includes(name)) {
+  if (currentUser?.role === 'editor' && ['access','compare','taluk','block','ekyc'].includes(name)) {
     name = 'hierarchy';
   }
   const views=['overview','hierarchy','taluk','block','data','access','audit','compare','ekyc'];
