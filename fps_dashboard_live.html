@@ -2310,16 +2310,40 @@ function openAddShop(block, society, event) {
   fields.innerHTML = EDIT_FIELDS.map(([key, colLabel]) => {
     const colKey = COLS[key] || colLabel;
     const val = prefill[key] || '';
-    const locked = (key === 'block' || key === 'society');
+    const locked = (key === 'block');
     const opts = EDIT_DROPDOWNS[colKey];
 
     if (locked) {
       return `<div class="modal-field"><label>${colKey}</label>
         <input id="ef-${key}" value="${val.replace(/"/g,'&quot;')}" readonly
           style="background:#1e2a4a;border-color:var(--blue);color:var(--blue);cursor:not-allowed;opacity:.9;font-weight:600">
-        <span style="font-size:9px;color:var(--blue);margin-top:2px;display:block">🔒 Locked to this ${key}</span>
+        <span style="font-size:9px;color:var(--blue);margin-top:2px;display:block">🔒 Locked to this block</span>
       </div>`;
     }
+
+    // Society field: dropdown of existing societies IN THIS BLOCK + option to type new one
+    if (key === 'society') {
+      const blockSocs = [...new Set(
+        allData.filter(r=>g(r,'block')===addShopBlock).map(r=>g(r,'society')).filter(Boolean)
+      )].sort((a,b)=>a.localeCompare(b,'ta'));
+      return `<div class="modal-field"><label>${colKey}</label>
+        <select id="ef-society-select"
+          onchange="document.getElementById('ef-society').value=this.value==='__new__'?'':this.value;document.getElementById('ef-society-new-row').style.display=this.value==='__new__'?'block':'none'"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit;margin-bottom:6px">
+          <option value="">— இந்த block-ல் உள்ள நிறுவனங்கள் —</option>
+          ${blockSocs.map(s=>`<option value="${s}" ${s===val?'selected':''}>${s}</option>`).join('')}
+          <option value="__new__" style="color:var(--green);font-weight:700">➕ புதிய நிறுவனம் சேர்க்கவும்...</option>
+        </select>
+        <input type="hidden" id="ef-${key}" value="${val.replace(/"/g,'&quot;')}">
+        <div id="ef-society-new-row" style="display:none">
+          <input id="ef-society-new" placeholder="புதிய நிறுவனத்தின் பெயர் தமிழில் உள்ளிடவும்"
+            oninput="document.getElementById('ef-society').value=this.value"
+            style="width:100%;background:var(--bg3);border:1.5px solid var(--green);color:var(--green);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit;box-sizing:border-box">
+          <span style="font-size:9px;color:var(--green);margin-top:2px;display:block">புதிய நிறுவனம் — மேல் input-ல் உள்ளிடவும்</span>
+        </div>
+      </div>`;
+    }
+
     if (opts) {
       return `<div class="modal-field"><label>${colKey}</label>
         <select id="ef-${key}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit">
@@ -2349,49 +2373,57 @@ async function saveNewShop() {
     const colKey = COLS[key] || colLabel;
     const val = el.value.trim();
     newRow[colKey] = val;
-    // Require at minimum: shopname, shopcode, society, block
     if (['shopname','shopcode'].includes(key) && !val) missing.push(colKey);
   });
 
-  // Force locked values
+  // Force locked values (block always locked; society from hidden input which society select/new populates)
   newRow[COLS['block']] = addShopBlock;
-  newRow[COLS['society']] = addShopSociety;
+  const societyVal = (document.getElementById('ef-society')?.value || '').trim();
+  if (!societyVal) missing.push(COLS['society'] || 'கூட்டுறவு நிறுவனம்');
+  else newRow[COLS['society']] = societyVal;
 
   if (missing.length) {
-    alert('தேவையான தகவல்கள் இல்லை: ' + missing.join(', '));
+    alert('தேவையான தகவல்கள் இல்லை:\n' + missing.join('\n'));
     return;
   }
 
-  // Build complete ordered row matching COLS order
+  // Show saving status
+  const saveBtn = document.querySelector('#modal-actions .btn:last-child');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ சேமிக்கிறது...'; }
+
   const orderedRow = Object.values(COLS).map(col => newRow[col] || '');
 
-  await sendToScript({
+  const result = await sendToScript({
     action: 'appendRow',
     row: orderedRow,
     editor: currentUser.label,
     timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
   });
 
-  // Add the new row to allData in memory so it appears immediately
+  // Add to memory
   const fakeRow = {};
   Object.entries(COLS).forEach(([key, col]) => { fakeRow[col] = newRow[col] || ''; });
-  fakeRow._row = Math.max(...allData.map(r=>r._row||0)) + 1;
-  fakeRow[COLS['serial']] = fakeRow._row;
+  // Use server-returned serial if available, otherwise estimate
+  const newSerial = result?.serial || (Math.max(...allData.map(r=>parseInt(g(r,'serial'))||0)) + 1);
+  fakeRow._row = newSerial;
+  fakeRow[COLS['serial']] = newSerial;
   allData.push(fakeRow);
 
   closeModal();
+
+  // Show toast
+  showToast(result ? '✓ புதிய கடை சேர்க்கப்பட்டது — Google Sheet-ல் சேமிக்கப்பட்டது' : '⚠ கடை சேர்க்கப்பட்டது (offline — refresh-ல் மறைந்துவிடலாம்)', result ? 'green' : 'amber');
+
   applyFilters();
   const pageBeforeSave = currentPage;
-  const maxPage = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
-  currentPage = Math.min(pageBeforeSave, maxPage);
+  currentPage = Math.min(pageBeforeSave, Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE)));
   renderDataTable();
 
   // Blink the new row
-  const newRowNum = fakeRow._row;
   setTimeout(() => {
     const tbody = document.getElementById('data-tbody');
     if (!tbody) return;
-    const rowEl = tbody.querySelector(`tr[data-row="${newRowNum}"]`);
+    const rowEl = tbody.querySelector(`tr[data-row="${newSerial}"]`);
     if (rowEl) {
       rowEl.scrollIntoView({behavior:'smooth', block:'center'});
       rowEl.classList.add('row-saved-blink');
@@ -2421,6 +2453,7 @@ async function saveEdit() {
     editor:currentUser.label,
     timestamp:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})
   });
+  showToast('✓ திருத்தம் சேமிக்கப்பட்டது', 'green');
   // Stash the row we just edited so we can preserve page + blink it
   const savedRowNum = editRowNum;
   closeModal();
@@ -2605,12 +2638,19 @@ function closeAuditModal() {
 // ── SEND TO SCRIPT ─────────────────────────────────────────
 async function sendToScript(payload) {
   try {
-    await fetch(CONFIG.SCRIPT_URL,{
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-  } catch(e) { console.error('Script error:',e); }
+    // Use GET with URL-encoded payload — avoids CORS preflight issues with Apps Script
+    const params = new URLSearchParams({ data: JSON.stringify(payload) });
+    const url = CONFIG.SCRIPT_URL + '?' + params.toString();
+    const res = await fetch(url, { method: 'GET' });
+    if (res.ok) {
+      const json = await res.json().catch(() => ({}));
+      if (json.status === 'error') console.warn('Script error:', json.message);
+      return json;
+    }
+  } catch(e) {
+    console.error('Script error:', e);
+  }
+  return null;
 }
 
 // ── EXPORT ─────────────────────────────────────────────────
@@ -3012,6 +3052,19 @@ function flashBtn(btn, msg, ms, restore) {
     btn.innerHTML = orig;
     btn.classList.remove('success');
   }, ms);
+}
+
+function showToast(msg, type) {
+  const color = type === 'green' ? '#3ecf8e' : type === 'red' ? '#f06060' : '#f5a623';
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;
+    background:#1a1f2e;border:1.5px solid ${color};border-radius:10px;
+    padding:12px 20px;font-size:13px;color:${color};font-weight:600;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);max-width:360px;
+    animation:savedBlink .3s ease-out;transition:opacity .4s`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>toast.remove(), 400); }, 3500);
 }
 
 // ── eKYC REVIEW MODULE ──────────────────────────────────────────
