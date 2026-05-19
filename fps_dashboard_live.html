@@ -2289,6 +2289,9 @@ async function deleteRow(rowNum, btn) {
   if (!reason.trim()) { alert('காரணம் கட்டாயம் தேவை'); return; }
   if (!confirm('"' + shopName + '" — இந்த பதிவை நிரந்தரமாக நீக்கவா?\n\nகாரணம்: ' + reason)) return;
 
+  // Disable button to prevent double-click
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
   await sendToScript({
     action: 'deleteRow',
     rowNumber: rowNum,
@@ -2298,11 +2301,16 @@ async function deleteRow(rowNum, btn) {
     timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
   });
 
+  // Remove from local memory — but DO NOT renumber other rows' _row values.
+  // The Google Sheet shifts rows up after deletion, so subsequent saves with
+  // stale _row would target the WRONG row. We force a reload from sheet instead.
   const idx = allData.findIndex(r => r._row === rowNum);
   if (idx >= 0) allData.splice(idx, 1);
-  allData.forEach((r, i) => r._row = i + 2);
-  applyFilters();
-  alert('✅ "' + shopName + '" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.');
+
+  alert('✅ "' + shopName + '" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.\n\n🔄 பக்கம் புதிப்பிக்கப்படும்...');
+
+  // Reload from sheet to re-sync row numbers correctly
+  setTimeout(() => location.reload(), 1500);
 }
 
 function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
@@ -2739,46 +2747,18 @@ function closeAuditModal() {
 
 // ── SEND TO SCRIPT ─────────────────────────────────────────
 async function sendToScript(payload) {
-  // Apps Script Web Apps redirect to googleusercontent.com for the response.
-  // Browser CORS sometimes blocks BOTH the response read AND throws on fetch().
-  // BUT the request DOES reach the script (confirmed: rows appear in sheet).
-  // Strategy: use no-cors mode → guaranteed delivery, opaque response.
-  // We can't read the response, so we always assume success unless fetch itself throws.
+  // CRITICAL: Single-fire no-cors GET request.
+  // - Apps Script doPost behaves badly with browser CORS (response can't be read).
+  // - Apps Script doGet with no-cors mode: data reaches server reliably, response opaque.
+  // - We assume success on fetch resolution (the script ran).
+  // - DO NOT retry / fallback — that causes duplicate writes (e.g. double-delete bug).
   try {
     const params = new URLSearchParams({ data: JSON.stringify(payload) });
     const url = CONFIG.SCRIPT_URL + '?' + params.toString();
-
-    // First attempt: cors mode (so we can READ the response if browser allows)
-    try {
-      const res = await fetch(url, { method: 'GET', redirect: 'follow' });
-      try {
-        const text = await res.text();
-        if (text) {
-          try {
-            const json = JSON.parse(text);
-            if (json.status === 'error') {
-              console.warn('Script returned error:', json.message);
-              return { status: 'error', message: json.message };
-            }
-            return json;
-          } catch(_) {
-            return { status: 'ok', presumed: true };
-          }
-        }
-      } catch(_) {
-        // Response read failed — but request reached server
-      }
-      return { status: 'ok', presumed: true };
-    } catch(corsErr) {
-      // CORS blocked the cors-mode fetch — retry with no-cors (fire-and-forget)
-      console.warn('CORS blocked read — retrying with no-cors (data still saves):', corsErr.message);
-      await fetch(url, { method: 'GET', mode: 'no-cors' });
-      // no-cors response is opaque; we can't verify, but the script DID receive the request
-      return { status: 'ok', presumed: true, mode: 'no-cors' };
-    }
+    await fetch(url, { method: 'GET', mode: 'no-cors' });
+    return { status: 'ok', presumed: true };
   } catch(networkErr) {
-    // Both attempts failed — real connectivity problem
-    console.error('Network error (both cors+no-cors failed):', networkErr);
+    console.error('Network error — fetch failed:', networkErr);
     return null;
   }
 }
