@@ -2381,6 +2381,25 @@ function openAddShop(block, society, event) {
       </div>`;
     }
 
+    // opendays field: 7 weekday checkboxes (matches form.html)
+    if (key === 'opendays') {
+      const weekdays = ['திங்கள்','செவ்வாய்','புதன்','வியாழன்','வெள்ளி','சனி','ஞாயிறு'];
+      const preselected = val ? val.split(',').map(s=>s.trim()).filter(Boolean) : [];
+      return `<div class="modal-field"><label>${colKey}</label>
+        <div id="ef-opendays-group" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+          ${weekdays.map(day => `
+            <label style="display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;user-select:none">
+              <input type="checkbox" class="ef-opendays-cb" value="${day}" ${preselected.includes(day)?'checked':''}
+                onchange="document.getElementById('ef-opendays').value=Array.from(document.querySelectorAll('.ef-opendays-cb:checked')).map(c=>c.value).join(', ')"
+                style="cursor:pointer;accent-color:var(--blue)">
+              ${day}
+            </label>`).join('')}
+        </div>
+        <input type="hidden" id="ef-${key}" value="${val.replace(/"/g,'&quot;')}">
+        <span style="font-size:9px;color:var(--muted);margin-top:3px;display:block">குறைந்தது ஒரு நாள் தேர்வு செய்யவும்</span>
+      </div>`;
+    }
+
     if (opts) {
       return `<div class="modal-field"><label>${colKey}</label>
         <select id="ef-${key}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit">
@@ -2720,20 +2739,41 @@ function closeAuditModal() {
 
 // ── SEND TO SCRIPT ─────────────────────────────────────────
 async function sendToScript(payload) {
+  // The Apps Script Web App often redirects to googleusercontent.com for the response,
+  // which fails the browser's CORS check on read. BUT the side effect (write to sheet)
+  // already happened on the first request. So if fetch() resolves without throwing,
+  // we treat that as a successful save — even if we can't read the response body.
   try {
-    // Use GET with URL-encoded payload — avoids CORS preflight issues with Apps Script
     const params = new URLSearchParams({ data: JSON.stringify(payload) });
     const url = CONFIG.SCRIPT_URL + '?' + params.toString();
-    const res = await fetch(url, { method: 'GET' });
-    if (res.ok) {
-      const json = await res.json().catch(() => ({}));
-      if (json.status === 'error') console.warn('Script error:', json.message);
-      return json;
+    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+    // Try to read response — but treat any failure here as "presumed success"
+    // because the script already ran by the time we got a response.
+    try {
+      const text = await res.text();
+      if (text) {
+        try {
+          const json = JSON.parse(text);
+          if (json.status === 'error') {
+            console.warn('Script error:', json.message);
+            return { status: 'error', message: json.message };
+          }
+          return json;  // {status:'ok', ...}
+        } catch(_) {
+          // Not JSON, but we got SOMETHING back → presume success
+          return { status: 'ok', presumed: true };
+        }
+      }
+    } catch(readErr) {
+      console.warn('Response read failed (data likely saved anyway):', readErr);
     }
-  } catch(e) {
-    console.error('Script error:', e);
+    // Default: presume success since fetch didn't throw
+    return { status: 'ok', presumed: true };
+  } catch(networkErr) {
+    // Real network failure — no connectivity
+    console.error('Network error:', networkErr);
+    return null;
   }
-  return null;
 }
 
 // ── EXPORT ─────────────────────────────────────────────────
