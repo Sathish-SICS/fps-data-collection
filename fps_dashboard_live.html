@@ -2747,11 +2747,9 @@ function closeAuditModal() {
 
 // ── SEND TO SCRIPT ─────────────────────────────────────────
 async function sendToScript(payload) {
-  // CRITICAL: Single-fire no-cors GET request.
-  // - Apps Script doPost behaves badly with browser CORS (response can't be read).
-  // - Apps Script doGet with no-cors mode: data reaches server reliably, response opaque.
-  // - We assume success on fetch resolution (the script ran).
-  // - DO NOT retry / fallback — that causes duplicate writes (e.g. double-delete bug).
+  // Add a unique requestId so the Apps Script can reject duplicate calls
+  // (Google's infrastructure sometimes delivers GET requests twice)
+  payload.requestId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   try {
     const params = new URLSearchParams({ data: JSON.stringify(payload) });
     const url = CONFIG.SCRIPT_URL + '?' + params.toString();
