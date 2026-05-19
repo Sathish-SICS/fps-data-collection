@@ -816,6 +816,43 @@ const COLS = {
   remarks:'குறிப்பு', godown:'கிடங்கு'
 };
 
+// ── CRITICAL: Sheet column order (must match Google Sheet header row exactly) ──
+// Column A=serial, B=Timestamp (server fills), then C–V per the order below.
+// Used when building a new row to append. Any mismatch causes column-shift bug.
+const SHEET_COL_ORDER = [
+  'serial',       // A: வ. எண்
+  '__timestamp',  // B: Timestamp (client provides ISO timestamp)
+  'taluk',        // C: வட்டம்
+  'block',        // D: ஒன்றியம்
+  'mla',          // E: சட்டமன்ற தொகுதி
+  'mp',           // F: பாராளுமன்ற தொகுதி
+  'agency',       // G: Agency Group
+  'society',      // H: கூட்டுறவு நிறுவனம்
+  'area',         // I: நகர்புறம் / கிராமபுறம்
+  'shopcode',     // J: கடை குறியீடு எண்
+  'shopname',     // K: நியாய விலைக் கடையின் பெயர்
+  'timetype',     // L: முழுநேரம் / பகுதிநேரம்
+  'cards',        // M: குடும்ப அட்டைகள் எண்ணிக்கை
+  'opendays',     // N: திறந்து செயல்படும் நாட்கள்
+  'pos',          // O: PoS இயந்திரம் உள்ளதா?
+  'posother',     // P: தாய்க்கடை PoS குறியீட்டு எண்
+  'building',     // Q: கட்டிட வகை
+  'buildingname', // R: கட்டடத்தின் பெயர்
+  'seller',       // S: விற்பனையாளர் பெயர்
+  'phone',        // T: விற்பனையாளர் கைபேசி எண்
+  'remarks',      // U: குறிப்பு
+  'godown'        // V: கிடங்கு
+];
+
+// Mandatory fields for new-shop form (per form.html validate() function)
+// Conditional: society is optional only for SHG/TNCSC; posother only when pos=='இல்லை'; shopcode only when pos=='உள்ளது'
+const MANDATORY_NEW_SHOP = [
+  'taluk', 'block', 'mla', 'mp', 'agency', 'society', 'area',
+  'shopcode', 'shopname', 'timetype', 'cards', 'opendays',
+  'pos', 'building', 'seller', 'phone', 'godown'
+];
+const OPTIONAL_NEW_SHOP = ['posother', 'buildingname', 'remarks'];
+
 function g(row, k) { return (row[COLS[k]] || '').toString().trim(); }
 
 // Normalize taluk display: ensure all show " (Tk)" suffix uniformly
@@ -2364,55 +2401,101 @@ function openAddShop(block, society, event) {
 }
 
 async function saveNewShop() {
-  const newRow = {};
+  const newRow = {};  // key (short) → value
   let missing = [];
 
+  // Collect values from all form fields
   EDIT_FIELDS.forEach(([key, colLabel]) => {
     const el = document.getElementById('ef-'+key);
     if (!el) return;
-    const colKey = COLS[key] || colLabel;
     const val = el.value.trim();
-    newRow[colKey] = val;
-    if (['shopname','shopcode'].includes(key) && !val) missing.push(colKey);
+    newRow[key] = val;
   });
 
-  // Force locked values (block always locked; society from hidden input which society select/new populates)
-  newRow[COLS['block']] = addShopBlock;
+  // Force locked values
+  newRow['block'] = addShopBlock;
   const societyVal = (document.getElementById('ef-society')?.value || '').trim();
-  if (!societyVal) missing.push(COLS['society'] || 'கூட்டுறவு நிறுவனம்');
-  else newRow[COLS['society']] = societyVal;
+  newRow['society'] = societyVal;
+
+  // ── MANDATORY FIELD VALIDATION (per form.html validate() rules) ──
+  // Standard mandatory fields
+  MANDATORY_NEW_SHOP.forEach(key => {
+    if (!newRow[key] || !newRow[key].trim()) {
+      missing.push(COLS[key] || key);
+    }
+  });
+
+  // Conditional rules (match form.html):
+  // 1. Society optional for SHG / TNCSC
+  if (newRow['agency'] === 'SHG' || newRow['agency'] === 'TNCSC') {
+    missing = missing.filter(f => f !== COLS['society']);
+  }
+  // 2. shopcode required only when PoS = உள்ளது
+  if (newRow['pos'] === 'இல்லை') {
+    missing = missing.filter(f => f !== COLS['shopcode']);
+    // posother becomes mandatory when pos=இல்லை
+    if (!newRow['posother'] || !newRow['posother'].trim()) {
+      missing.push(COLS['posother']);
+    }
+  }
+  // 3. Phone format: 10 digits starting 6-9 (per form.html regex)
+  if (newRow['phone'] && !/^[6-9][0-9]{9}$/.test(newRow['phone'])) {
+    if (!missing.includes(COLS['phone'])) missing.push(COLS['phone'] + ' (சரியான 10 இலக்கம்)');
+  }
+  // 4. Cards must be a positive number
+  if (newRow['cards'] && (isNaN(parseInt(newRow['cards'])) || parseInt(newRow['cards']) < 1)) {
+    if (!missing.includes(COLS['cards'])) missing.push(COLS['cards'] + ' (சரியான எண்)');
+  }
 
   if (missing.length) {
-    alert('தேவையான தகவல்கள் இல்லை:\n' + missing.join('\n'));
+    alert('⚠ தேவையான தகவல்கள் இல்லை:\n\n• ' + missing.join('\n• '));
     return;
   }
 
   // Show saving status
   const saveBtn = document.querySelector('#modal-actions .btn:last-child');
+  const origLabel = saveBtn ? saveBtn.textContent : '';
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ சேமிக்கிறது...'; }
 
-  const orderedRow = Object.values(COLS).map(col => newRow[col] || '');
+  // ── BUILD ROW IN EXACT SHEET COLUMN ORDER (matches form.html backend behavior) ──
+  // SHEET_COL_ORDER includes Timestamp at position B (index 1)
+  const clientTimestamp = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'});
+  const orderedRow = SHEET_COL_ORDER.map(key => {
+    if (key === 'serial') return '';                  // Server will assign
+    if (key === '__timestamp') return clientTimestamp; // Column B
+    return newRow[key] || '';
+  });
 
   const result = await sendToScript({
     action: 'appendRow',
     row: orderedRow,
     editor: currentUser.label,
-    timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
+    timestamp: clientTimestamp
   });
 
-  // Add to memory
+  // Restore button if save failed
+  if (!result && saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = origLabel;
+    showToast('❌ சேமிக்க முடியவில்லை — இணைய இணைப்பை சரிபார்க்கவும்', 'red');
+    return;
+  }
+
+  // ── Add to local memory using full Tamil-column keys ──
   const fakeRow = {};
-  Object.entries(COLS).forEach(([key, col]) => { fakeRow[col] = newRow[col] || ''; });
-  // Use server-returned serial if available, otherwise estimate
+  // Set Timestamp explicitly (column B)
+  fakeRow['Timestamp'] = clientTimestamp;
+  // Set all other columns
+  Object.entries(COLS).forEach(([key, col]) => {
+    fakeRow[col] = newRow[key] || '';
+  });
   const newSerial = result?.serial || (Math.max(...allData.map(r=>parseInt(g(r,'serial'))||0)) + 1);
-  fakeRow._row = newSerial;
+  fakeRow._row = newSerial + 1; // _row = sheet row = serial + 1 (header)
   fakeRow[COLS['serial']] = newSerial;
   allData.push(fakeRow);
 
   closeModal();
-
-  // Show toast
-  showToast(result ? '✓ புதிய கடை சேர்க்கப்பட்டது — Google Sheet-ல் சேமிக்கப்பட்டது' : '⚠ கடை சேர்க்கப்பட்டது (offline — refresh-ல் மறைந்துவிடலாம்)', result ? 'green' : 'amber');
+  showToast(`✓ புதிய கடை சேர்க்கப்பட்டது — Google Sheet-ல் சேமிக்கப்பட்டது (Sl. ${newSerial})`, 'green');
 
   applyFilters();
   const pageBeforeSave = currentPage;
@@ -2423,7 +2506,7 @@ async function saveNewShop() {
   setTimeout(() => {
     const tbody = document.getElementById('data-tbody');
     if (!tbody) return;
-    const rowEl = tbody.querySelector(`tr[data-row="${newSerial}"]`);
+    const rowEl = tbody.querySelector(`tr[data-row="${fakeRow._row}"]`);
     if (rowEl) {
       rowEl.scrollIntoView({behavior:'smooth', block:'center'});
       rowEl.classList.add('row-saved-blink');
@@ -3068,7 +3151,7 @@ function showToast(msg, type) {
 }
 
 // ── eKYC REVIEW MODULE ──────────────────────────────────────────
-const EKYC_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzmYQzj5_bziseamPHs-59-2rysWSNVHPJzmtfL1OnUzRdekrHXicnBfdLO-Xq2wPZK/exec';
+// EKYC_SCRIPT_URL removed — now uses CONFIG.SCRIPT_URL via sendToScript()
 
 // Block ↔ Circle mapping (from Block_-_Circle.xlsx) — eKYC English block name → Circle
 const EKYC_BLOCK_CIRCLE = {
@@ -3473,13 +3556,12 @@ async function saveEkycToSheet() {
   };
 
   try {
-    await fetch(EKYC_SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    // no-cors = response opaque, assume success
-    status.innerHTML = `<span style="color:var(--green)">✓ Saved! (${ekycData.length} rows submitted) — refresh page to confirm in eKYC_History sheet</span>`;
+    const result = await sendToScript(payload);
+    if (result && result.status === 'ok') {
+      status.innerHTML = `<span style="color:var(--green)">✓ Saved! (${result.rowsAdded || ekycData.length} rows saved to eKYC_History sheet)</span>`;
+    } else {
+      status.innerHTML = `<span style="color:var(--red)">❌ Save failed: ${result?.message || 'No response from server'}</span>`;
+    }
   } catch (e) {
     status.innerHTML = `<span style="color:var(--red)">❌ Save failed: ${e.message}</span>`;
   }
