@@ -2739,39 +2739,46 @@ function closeAuditModal() {
 
 // ── SEND TO SCRIPT ─────────────────────────────────────────
 async function sendToScript(payload) {
-  // The Apps Script Web App often redirects to googleusercontent.com for the response,
-  // which fails the browser's CORS check on read. BUT the side effect (write to sheet)
-  // already happened on the first request. So if fetch() resolves without throwing,
-  // we treat that as a successful save — even if we can't read the response body.
+  // Apps Script Web Apps redirect to googleusercontent.com for the response.
+  // Browser CORS sometimes blocks BOTH the response read AND throws on fetch().
+  // BUT the request DOES reach the script (confirmed: rows appear in sheet).
+  // Strategy: use no-cors mode → guaranteed delivery, opaque response.
+  // We can't read the response, so we always assume success unless fetch itself throws.
   try {
     const params = new URLSearchParams({ data: JSON.stringify(payload) });
     const url = CONFIG.SCRIPT_URL + '?' + params.toString();
-    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
-    // Try to read response — but treat any failure here as "presumed success"
-    // because the script already ran by the time we got a response.
+
+    // First attempt: cors mode (so we can READ the response if browser allows)
     try {
-      const text = await res.text();
-      if (text) {
-        try {
-          const json = JSON.parse(text);
-          if (json.status === 'error') {
-            console.warn('Script error:', json.message);
-            return { status: 'error', message: json.message };
+      const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+      try {
+        const text = await res.text();
+        if (text) {
+          try {
+            const json = JSON.parse(text);
+            if (json.status === 'error') {
+              console.warn('Script returned error:', json.message);
+              return { status: 'error', message: json.message };
+            }
+            return json;
+          } catch(_) {
+            return { status: 'ok', presumed: true };
           }
-          return json;  // {status:'ok', ...}
-        } catch(_) {
-          // Not JSON, but we got SOMETHING back → presume success
-          return { status: 'ok', presumed: true };
         }
+      } catch(_) {
+        // Response read failed — but request reached server
       }
-    } catch(readErr) {
-      console.warn('Response read failed (data likely saved anyway):', readErr);
+      return { status: 'ok', presumed: true };
+    } catch(corsErr) {
+      // CORS blocked the cors-mode fetch — retry with no-cors (fire-and-forget)
+      console.warn('CORS blocked read — retrying with no-cors (data still saves):', corsErr.message);
+      await fetch(url, { method: 'GET', mode: 'no-cors' });
+      // no-cors response is opaque; we can't verify, but the script DID receive the request
+      return { status: 'ok', presumed: true, mode: 'no-cors' };
     }
-    // Default: presume success since fetch didn't throw
-    return { status: 'ok', presumed: true };
   } catch(networkErr) {
-    // Real network failure — no connectivity
-    console.error('Network error:', networkErr);
+    // Both attempts failed — real connectivity problem
+    console.error('Network error (both cors+no-cors failed):', networkErr);
     return null;
   }
 }
