@@ -2301,16 +2301,16 @@ async function deleteRow(rowNum, btn) {
     timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
   });
 
-  // Remove from local memory — but DO NOT renumber other rows' _row values.
-  // The Google Sheet shifts rows up after deletion, so subsequent saves with
-  // stale _row would target the WRONG row. We force a reload from sheet instead.
+  // Remove from local memory immediately so UI updates at once
   const idx = allData.findIndex(r => r._row === rowNum);
   if (idx >= 0) allData.splice(idx, 1);
+  applyFilters();
 
-  alert('✅ "' + shopName + '" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.\n\n🔄 பக்கம் புதிப்பிக்கப்படும்...');
+  showToast('✅ "' + shopName + '" நீக்கப்பட்டது — Audit Log-ல் பதிவு செய்யப்பட்டது', 'green');
 
-  // Reload from sheet to re-sync row numbers correctly
-  setTimeout(() => location.reload(), 1500);
+  // Re-fetch from sheet after 3s to re-sync _row numbers (sheet shifts after delete)
+  // loadData() preserves session — only location.reload() would log out
+  setTimeout(() => loadData(), 3000);
 }
 
 function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
