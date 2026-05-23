@@ -2250,6 +2250,16 @@ function openEdit(rowNum) {
     const colKey = COLS[key] || col;
     const val = (row[colKey]||'').toString().trim();
     const opts = EDIT_DROPDOWNS[colKey];
+
+    // Editors cannot change the block field — show as locked
+    if (key === 'block' && currentUser?.role !== 'master') {
+      return `<div class="modal-field"><label>${colKey}</label>
+        <input id="ef-${key}" value="${val.replace(/"/g,'&quot;')}" readonly
+          style="background:#1e2a4a;border-color:var(--blue);color:var(--blue);cursor:not-allowed;opacity:.9;font-weight:600">
+        <span style="font-size:9px;color:var(--blue);margin-top:2px;display:block">🔒 Block மாற்ற Master login தேவை</span>
+      </div>`;
+    }
+
     if (opts) {
       return `<div class="modal-field"><label>${colKey}</label>
         <select id="ef-${key}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit">
@@ -2301,16 +2311,16 @@ async function deleteRow(rowNum, btn) {
     timestamp: new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})
   });
 
-  // Remove from local memory — but DO NOT renumber other rows' _row values.
-  // The Google Sheet shifts rows up after deletion, so subsequent saves with
-  // stale _row would target the WRONG row. We force a reload from sheet instead.
+  // Remove from local memory immediately so UI updates at once
   const idx = allData.findIndex(r => r._row === rowNum);
   if (idx >= 0) allData.splice(idx, 1);
+  applyFilters();
 
-  alert('✅ "' + shopName + '" நீக்கப்பட்டது. காரணம் Audit Log-ல் பதிவு செய்யப்பட்டது.\n\n🔄 பக்கம் புதிப்பிக்கப்படும்...');
+  showToast('✅ "' + shopName + '" நீக்கப்பட்டது — Audit Log-ல் பதிவு செய்யப்பட்டது', 'green');
 
-  // Reload from sheet to re-sync row numbers correctly
-  setTimeout(() => location.reload(), 1500);
+  // Re-fetch from sheet after 3s to re-sync _row numbers (sheet shifts after delete)
+  // loadData() preserves session — only location.reload() would log out
+  setTimeout(() => loadData(), 3000);
 }
 
 function closeModal(){document.getElementById('edit-modal').classList.remove('open');editRowNum=-1;}
@@ -2321,7 +2331,21 @@ let addShopSociety = ''; // locked society for new-shop form
 
 function openAddShop(block, society, event) {
   if (event) event.stopPropagation();
-  // Respect finalise locks
+
+  // ── ACCESS CONTROL CHECKS ─────────────────────────────────
+  if (currentUser?.role !== 'master') {
+    // Editor cannot add to a different block
+    if (block !== currentUser.block) {
+      alert('நீங்கள் ' + currentUser.block + ' block-ஐ மட்டுமே திருத்தலாம்.');
+      return;
+    }
+  }
+  // Block must be open (access window check)
+  if (currentUser?.role !== 'master' && !isBlockOpen(block)) {
+    alert(block + ' block-க்கு தற்போது திருத்த அனுமதி இல்லை — Access Control-ல் "Open" செய்யவும்.');
+    return;
+  }
+  // Block must not be finalised
   if (finaliseStatus['block:'+block]) {
     alert(block + ' block finalised ஆகிவிட்டது — புதிய கடை சேர்க்க முடியாது'); return;
   }
@@ -2479,7 +2503,23 @@ async function saveNewShop() {
     return;
   }
 
-  // Show saving status
+  // ── FINAL ACCESS CONTROL CHECK (defence in depth) ─────────
+  // Revalidate the locked block against access control at save time
+  // so that any UI bypass is also caught here
+  if (currentUser?.role !== 'master') {
+    if (addShopBlock !== currentUser.block) {
+      alert('நீங்கள் ' + currentUser.block + ' block-ஐ மட்டுமே திருத்தலாம்.');
+      closeModal(); return;
+    }
+    if (!isBlockOpen(addShopBlock)) {
+      alert(addShopBlock + ' block-க்கு தற்போது திருத்த அனுமதி இல்லை.');
+      closeModal(); return;
+    }
+    if (finaliseStatus['block:' + addShopBlock]) {
+      alert(addShopBlock + ' block finalised ஆகிவிட்டது — புதிய கடை சேர்க்க முடியாது.');
+      closeModal(); return;
+    }
+  }
   const saveBtn = document.querySelector('#modal-actions .btn:last-child');
   const origLabel = saveBtn ? saveBtn.textContent : '';
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ சேமிக்கிறது...'; }
@@ -2546,6 +2586,31 @@ async function saveEdit() {
   if(editRowNum<0) return;
   const row=allData.find(r=>r._row===editRowNum);
   if(!row) return;
+
+  const currentBlock = g(row, 'block');
+
+  // ── ACCESS CONTROL CHECKS ─────────────────────────────────
+  // 1. Master always allowed
+  // 2. Editor: current block must be open + not finalised
+  // 3. Anyone: cannot change a shop's block to a closed/denied block
+  if (currentUser?.role !== 'master') {
+    // Editor trying to edit a shop not in their block
+    if (currentBlock !== currentUser.block) {
+      alert('நீங்கள் ' + currentUser.block + ' block-ஐ மட்டுமே திருத்தலாம்.');
+      closeModal(); return;
+    }
+    // Editor's own block must be open
+    if (!isBlockOpen(currentBlock)) {
+      alert(currentBlock + ' block-க்கு தற்போது திருத்த அனுமதி இல்லை.');
+      closeModal(); return;
+    }
+    // Block must not be finalised
+    if (finaliseStatus['block:' + currentBlock]) {
+      alert(currentBlock + ' block finalised ஆகிவிட்டது — திருத்த முடியாது.');
+      closeModal(); return;
+    }
+  }
+
   const changes=[];
   EDIT_FIELDS.forEach(([key,col])=>{
     const el=document.getElementById('ef-'+key);
@@ -2558,6 +2623,29 @@ async function saveEdit() {
     }
   });
   if(!changes.length){closeModal();return;}
+
+  // ── BLOCK-CHANGE VALIDATION ───────────────────────────────
+  // If the block column is being changed, the TARGET block must also be open
+  const blockChange = changes.find(c => c.col === COLS['block']);
+  if (blockChange) {
+    const targetBlock = blockChange.new;
+    // Master can move shops freely; editors cannot change block at all
+    if (currentUser?.role === 'master') {
+      // Master: target block must be open (not access-denied)
+      if (!isBlockOpen(targetBlock) && targetBlock !== currentBlock) {
+        const confirm = window.confirm(
+          '⚠ ' + targetBlock + ' block-க்கு தற்போது access இல்லை.\n\n' +
+          'நீங்கள் Master என்பதால் மாற்றலாம். தொடரவா?'
+        );
+        if (!confirm) { closeModal(); return; }
+      }
+    } else {
+      // Editors cannot change block field at all
+      alert('Block பெயரை மாற்ற அனுமதி இல்லை. Block field-ஐ திருத்த Master login தேவை.');
+      closeModal(); return;
+    }
+  }
+
   await sendToScript({
     action:'update', rowNumber:editRowNum, changes,
     editor:currentUser.label,
