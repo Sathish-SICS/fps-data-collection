@@ -314,28 +314,18 @@ tr:last-child td{border-bottom:none}
         <div style="background:var(--bg2);border:1px solid #4f8ef744;border-radius:12px;padding:14px">
           <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ முழுநேரம் - பகுதிநேரம்</div>
           <div style="display:flex;gap:10px">
-            <div style="flex:1;text-align:center;cursor:pointer" onclick="showTimePosDrilldown('full')">
+            <div style="flex:1;text-align:center">
               <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">முழுநேரம்</div>
               <div style="font-size:10px;color:var(--muted)" id="s-full-pct"></div>
-              <div style="display:flex;gap:3px;justify-content:center;margin-top:4px">
-                <span style="font-size:9px;background:#3ecf8e22;border:1px solid #3ecf8e44;border-radius:4px;padding:1px 5px;color:var(--green)" id="s-full-pos">—</span>
-                <span style="font-size:9px;background:#f0606022;border:1px solid #f0606044;border-radius:4px;padding:1px 5px;color:var(--red)" id="s-full-nopos">—</span>
-              </div>
             </div>
             <div style="width:1px;background:var(--border)"></div>
-            <div style="flex:1;text-align:center;cursor:pointer" onclick="showTimePosDrilldown('part')">
+            <div style="flex:1;text-align:center">
               <div style="font-size:22px;font-weight:700;color:var(--amber);font-family:'DM Mono',monospace" id="s-part">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">பகுதிநேரம்</div>
               <div style="font-size:10px;color:var(--muted)" id="s-part-pct"></div>
-              <div style="display:flex;gap:3px;justify-content:center;margin-top:4px">
-                <span style="font-size:9px;background:#3ecf8e22;border:1px solid #3ecf8e44;border-radius:4px;padding:1px 5px;color:var(--green)" id="s-part-pos">—</span>
-                <span style="font-size:9px;background:#f0606022;border:1px solid #f0606044;border-radius:4px;padding:1px 5px;color:var(--red)" id="s-part-nopos">—</span>
-              </div>
             </div>
           </div>
-          <!-- Drilldown panel (hidden by default) -->
-          <div id="timetype-drilldown" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px"></div>
         </div>
 
         <!-- PoS group -->
@@ -985,8 +975,7 @@ function isBlockOpen(block) {
 // ── LOAD DATA ──────────────────────────────────────────────
 async function loadData() {
   document.getElementById('topbar-sub').textContent = 'Loading...';
-  // Add cache-busting timestamp so Google API always returns fresh data
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(CONFIG.SHEET_NAME)}?key=${CONFIG.API_KEY}&_t=${Date.now()}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(CONFIG.SHEET_NAME)}?key=${CONFIG.API_KEY}`;
   try {
     const res  = await fetch(url);
     const json = await res.json();
@@ -997,21 +986,7 @@ async function loadData() {
     const headers = json.values[0];
     allData = json.values.slice(1).map((row, i) => {
       const obj = { _row: i + 2 };
-      const seen = {};
-      headers.forEach((h, j) => {
-        const key = h.trim();
-        if (!key) return;
-        const val = (row[j] || '').trim();
-        // Only set if: first time seeing this header, OR current value is empty and new value has content
-        if (!(key in seen)) {
-          obj[key] = val;
-          seen[key] = true;
-        } else if (!obj[key] && val) {
-          // First occurrence was empty, later duplicate has value — use it
-          obj[key] = val;
-        }
-        // If first occurrence had value and duplicate is empty → keep original (do nothing)
-      });
+      headers.forEach((h, j) => obj[h.trim()] = (row[j] || '').trim());
       return obj;
     }).filter(r => Object.values(r).some(v => v && v !== '_row'));
 
@@ -1143,26 +1118,10 @@ function updateStats(data) {
   const urban = data.filter(r=>g(r,'area').includes('நகர்')).length;
   const rural = data.filter(r=>g(r,'area').includes('கிராம')).length;
   const pct = x => Math.round(x/n*100)+'%';
-
-  // Full × PoS cross-breakdown
-  const fullPos   = data.filter(r=>g(r,'timetype')==='முழுநேரம்' && g(r,'pos')==='உள்ளது').length;
-  const fullNopos = data.filter(r=>g(r,'timetype')==='முழுநேரம்' && g(r,'pos')==='இல்லை').length;
-  const partPos   = data.filter(r=>g(r,'timetype')==='பகுதிநேரம்' && g(r,'pos')==='உள்ளது').length;
-  const partNopos = data.filter(r=>g(r,'timetype')==='பகுதிநேரம்' && g(r,'pos')==='இல்லை').length;
-
   setText('s-total',data.length.toLocaleString()); setText('s-full',full); setText('s-full-pct',pct(full));
   setText('s-part',part); setText('s-part-pct',pct(part)); setText('s-pos',pos); setText('s-pos-pct',pct(pos));
   setText('s-nopos',nopos); setText('s-nopos-pct',pct(nopos)); setText('s-cards',cards.toLocaleString());
   setText('s-urban',urban); setText('s-urban-pct',pct(urban)); setText('s-rural',rural); setText('s-rural-pct',pct(rural));
-
-  // Mini PoS badges inside full/part boxes
-  setText('s-full-pos',   '📟 ' + fullPos);
-  setText('s-full-nopos', '✗ ' + fullNopos);
-  setText('s-part-pos',   '📟 ' + partPos);
-  setText('s-part-nopos', '✗ ' + partNopos);
-
-  // Store breakdown data for click-to-expand
-  window._overviewData = data;
 
   // Building type group
   const buildingEl = document.getElementById('s-building-group');
@@ -1186,310 +1145,11 @@ function updateStats(data) {
 }
 function setText(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
 function setDonut(id,dash,c,off){ const e=document.getElementById(id); if(e){ e.setAttribute('stroke-dasharray',dash+' '+c); e.setAttribute('stroke-dashoffset',off); } }
-
-// ── Time×PoS drilldown (click on முழுநேரம் or பகுதிநேரம் box) ──────────────
-function showTimePosDrilldown(timetype) {
-  const panel = document.getElementById('timetype-drilldown');
-  if (!panel) return;
-  const data = window._overviewData || allData;
-  const label = timetype === 'full' ? 'முழுநேரம்' : 'பகுதிநேரம்';
-  const tval  = timetype === 'full' ? 'முழுநேரம்' : 'பகுதிநேரம்';
-  const color = timetype === 'full' ? 'var(--green)' : 'var(--amber)';
-  const subset = data.filter(r => g(r,'timetype') === tval);
-
-  // Toggle
-  if (panel.style.display !== 'none' && panel.dataset.type === timetype) {
-    panel.style.display = 'none'; return;
-  }
-  panel.dataset.type = timetype;
-  panel.style.display = 'block';
-
-  const posY  = subset.filter(r => g(r,'pos') === 'உள்ளது').length;
-  const posN  = subset.filter(r => g(r,'pos') === 'இல்லை').length;
-  const urban = subset.filter(r => g(r,'area').includes('நகர்')).length;
-  const rural = subset.filter(r => g(r,'area').includes('கிராம')).length;
-  const cards = subset.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
-  const n = subset.length || 1;
-  const pct = v => Math.round(v/n*100) + '%';
-
-  const bTypes = {};
-  subset.forEach(r => { const b = g(r,'building'); if (b) bTypes[b] = (bTypes[b]||0)+1; });
-  const bColors = {'சொந்தம்':'#4f8ef7','அரசு இலவசம்':'#3ecf8e','அரசு வாடகை':'#f5a623','தனியார் வாடகை':'#f06060','தனியார் இலவசம்':'#a78bfa'};
-
-  const statMini = (lbl, val, sub, c) => `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center;flex:1;min-width:110px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${lbl}</div>
-      <div style="font-size:20px;font-weight:700;color:${c};font-family:'DM Mono',monospace">${val}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">${sub}</div>
-    </div>`;
-
-  panel.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <span style="font-size:11px;font-weight:700;color:${color}">${label} — ${subset.length} கடைகள்</span>
-      <button onclick="document.getElementById('timetype-drilldown').style.display='none'"
-        style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:1px 7px;font-size:11px;cursor:pointer">✕</button>
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      ${statMini('📟 PoS உள்ளவை', posY, pct(posY), 'var(--green)')}
-      ${statMini('✗ PoS இல்லாதவை', posN, pct(posN), 'var(--red)')}
-      ${statMini('🏙 நகர்புறம்', urban, pct(urban), 'var(--blue)')}
-      ${statMini('🌾 கிராமபுறம்', rural, pct(rural), 'var(--teal)')}
-      ${statMini('🃏 மொத்த அட்டைகள்', cards.toLocaleString(), '', 'var(--purple)')}
-    </div>
-    <div style="font-size:9px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">கட்டிட வகை</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${Object.entries(bTypes).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;text-align:center;min-width:90px">
-          <div style="font-size:16px;font-weight:700;color:${bColors[t]||'#888'};font-family:'DM Mono',monospace">${c}</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px">${t}</div>
-          <div style="font-size:9px;color:${bColors[t]||'#888'}">${pct(c)}</div>
-        </div>`).join('')}
-    </div>`;
-}
-
-// ── Abstract table block row drilldown ─────────────────────
-function showAbstractBlockDetail(block, rowEl) {
-  const data = window._overviewData || allData;
-  const rows = data.filter(r => g(r,'block') === block);
-  const n = rows.length || 1;
-  const pct = v => Math.round(v/n*100) + '%';
-
-  const allClickRows = document.querySelectorAll('#abstract-tbody tr[onclick]');
-  let idx = -1;
-  allClickRows.forEach((tr, i) => { if (tr === rowEl) idx = i; });
-  if (idx < 0) return;
-
-  const detailRow = document.getElementById('abstract-detail-' + idx);
-  const contentDiv = document.getElementById('abstract-detail-content-' + idx);
-  if (!detailRow) return;
-
-  if (detailRow.style.display !== 'none') {
-    detailRow.style.display = 'none';
-    rowEl.querySelector('.expand-arrow').textContent = '▶';
-    return;
-  }
-  // Close others
-  document.querySelectorAll('[id^="abstract-detail-"]').forEach(el => {
-    if (!el.id.includes('content')) el.style.display = 'none';
-  });
-  document.querySelectorAll('.expand-arrow').forEach(s => s.textContent = '▶');
-  rowEl.querySelector('.expand-arrow').textContent = '▼';
-  detailRow.style.display = '';
-
-  const full    = rows.filter(r=>g(r,'timetype')==='முழுநேரம்');
-  const part    = rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்');
-  const fullPos = full.filter(r=>g(r,'pos')==='உள்ளது').length;
-  const fullNp  = full.filter(r=>g(r,'pos')==='இல்லை').length;
-  const partPos = part.filter(r=>g(r,'pos')==='உள்ளது').length;
-  const partNp  = part.filter(r=>g(r,'pos')==='இல்லை').length;
-  const urban   = rows.filter(r=>g(r,'area')==='நகர்புறம்').length;
-  const rural   = rows.filter(r=>g(r,'area')==='கிராமபுறம்').length;
-  const cards   = rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0), 0);
-  const socs    = new Set(rows.map(r=>g(r,'society'))).size;
-
-  const bTypes = {};
-  rows.forEach(r => { const b = g(r,'building'); if(b) bTypes[b]=(bTypes[b]||0)+1; });
-  const bColors = {'சொந்தம்':'#4f8ef7','அரசு இலவசம்':'#3ecf8e','அரசு வாடகை':'#f5a623','தனியார் வாடகை':'#f06060','தனியார் இலவசம்':'#a78bfa'};
-
-  const box = (lbl,val,sub,c) => `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;min-width:100px;flex:1">
-      <div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">${lbl}</div>
-      <div style="font-size:19px;font-weight:700;color:${c};font-family:'DM Mono',monospace">${val}</div>
-      <div style="font-size:9px;color:var(--muted)">${sub}</div>
-    </div>`;
-
-  contentDiv.innerHTML = `
-    <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px">📍 ${block} — விரிவான விவரம்</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      ${box('மொத்த கடைகள்',rows.length,socs+' நிறுவனங்கள்','var(--blue)')}
-      ${box('மொத்த அட்டைகள்',cards.toLocaleString(),'குடும்பங்கள்','var(--purple)')}
-      ${box('நகர்புறம்',urban,pct(urban),'var(--blue)')}
-      ${box('கிராமபுறம்',rural,pct(rural),'var(--teal)')}
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      ${box('முழுநேரம்',full.length,pct(full.length),'var(--green)')}
-      ${box('பகுதிநேரம்',part.length,pct(part.length),'var(--amber)')}
-      ${box('PoS உள்ளது',fullPos+partPos,pct(fullPos+partPos),'var(--green)')}
-      ${box('PoS இல்லை',fullNp+partNp,pct(fullNp+partNp),'var(--red)')}
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-      <div style="font-size:9px;color:var(--amber);text-transform:uppercase;margin-bottom:8px;font-weight:700">நேர வகை × PoS அட்டவணை</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        ${[['முழுநேரம் + PoS',fullPos,'#3ecf8e22','var(--green)'],
-           ['முழுநேரம் − PoS',fullNp,'#f0606022','var(--red)'],
-           ['பகுதிநேரம் + PoS',partPos,'#f5a62322','var(--amber)'],
-           ['பகுதிநேரம் − PoS',partNp,'#f0606022','var(--red)']
-          ].map(([l,v,bg,c])=>`
-          <div style="background:${bg};border-radius:6px;padding:6px;text-align:center">
-            <div style="font-size:16px;font-weight:700;color:${c};font-family:'DM Mono',monospace">${v}</div>
-            <div style="font-size:8px;color:var(--muted)">${l}</div>
-          </div>`).join('')}
-      </div>
-    </div>
-    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">கட்டிட வகை</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${Object.entries(bTypes).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;text-align:center;min-width:85px">
-          <div style="font-size:15px;font-weight:700;color:${bColors[t]||'#888'};font-family:'DM Mono',monospace">${c}</div>
-          <div style="font-size:8px;color:var(--muted)">${t}</div>
-          <div style="font-size:9px;color:${bColors[t]||'#888'}">${pct(c)}</div>
-        </div>`).join('')}
-    </div>`;
-
-  detailRow.scrollIntoView({behavior:'smooth', block:'nearest'});
-}
-
-function mkMini(label, val, pct, color) {
-  return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
-    <div style="font-size:9px;color:var(--muted)">${label}</div>
-    <div style="font-size:16px;font-weight:700;color:${color};font-family:'DM Mono',monospace">${val}
-      ${pct ? `<span style="font-size:10px;color:var(--muted);font-weight:400">${pct}</span>` : ''}
-    </div>
-  </div>`;
-}
-
-// ── Block detail popup (click on block name in abstract table) ──────────────
-function showBlockDetail(block) {
-  const data = window._overviewData || allData;
-  const subset = data.filter(r => g(r,'block') === block);
-  if (!subset.length) return;
-
-  const n = subset.length;
-  const full    = subset.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
-  const part    = subset.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
-  const posY    = subset.filter(r=>g(r,'pos')==='உள்ளது').length;
-  const posN    = subset.filter(r=>g(r,'pos')==='இல்லை').length;
-  const fullPos = subset.filter(r=>g(r,'timetype')==='முழுநேரம்'&&g(r,'pos')==='உள்ளது').length;
-  const fullNoP = subset.filter(r=>g(r,'timetype')==='முழுநேரம்'&&g(r,'pos')==='இல்லை').length;
-  const partPos = subset.filter(r=>g(r,'timetype')==='பகுதிநேரம்'&&g(r,'pos')==='உள்ளது').length;
-  const partNoP = subset.filter(r=>g(r,'timetype')==='பகுதிநேரம்'&&g(r,'pos')==='இல்லை').length;
-  const urban   = subset.filter(r=>g(r,'area').includes('நகர்')).length;
-  const rural   = subset.filter(r=>g(r,'area').includes('கிராம')).length;
-  const cards   = subset.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
-  const socs    = new Set(subset.map(r=>g(r,'society')).filter(Boolean)).size;
-  const p = v => Math.round(v/n*100)+'%';
-
-  // Building breakdown
-  const bTypes = {};
-  subset.forEach(r => { const b=g(r,'building'); if(b) bTypes[b]=(bTypes[b]||0)+1; });
-  const bColors = {'சொந்தம்':'#4f8ef7','அரசு இலவசம்':'#3ecf8e','அரசு வாடகை':'#f5a623','தனியார் வாடகை':'#f06060','தனியார் இலவசம்':'#a78bfa'};
-
-  const el = document.getElementById('block-detail-panel');
-  if (!el) return;
-  el.style.display = 'block';
-  el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:700;color:var(--blue)">📍 ${block}</div>
-      <button onclick="document.getElementById('block-detail-panel').style.display='none'"
-        style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">✕</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
-      ${mkMini('மொத்த கடைகள்', n, '', 'var(--blue)')}
-      ${mkMini('நிறுவனங்கள்', socs, '', 'var(--teal)')}
-      ${mkMini('மொத்த அட்டைகள்', cards.toLocaleString(), '', 'var(--purple)')}
-    </div>
-    <div style="font-size:10px;font-weight:700;color:var(--text);margin-bottom:6px">நேர வகை × PoS</div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px">
-      ${mkMini('முழுநேரம் + PoS', fullPos, p(fullPos), 'var(--green)')}
-      ${mkMini('முழுநேரம் - PoS', fullNoP, p(fullNoP), 'var(--amber)')}
-      ${mkMini('பகுதிநேரம் + PoS', partPos, p(partPos), '#2dd4bf')}
-      ${mkMini('பகுதிநேரம் - PoS', partNoP, p(partNoP), 'var(--red)')}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px">
-      ${mkMini('🏙 நகர்புறம்', urban, p(urban), 'var(--blue)')}
-      ${mkMini('🌾 கிராமபுறம்', rural, p(rural), 'var(--teal)')}
-    </div>
-    <div style="font-size:9px;color:var(--muted);margin-bottom:4px">கட்டிட வகை</div>
-    <div style="display:flex;flex-wrap:wrap;gap:4px">
-      ${Object.entries(bTypes).sort((a,b)=>b[1]-a[1]).map(([t,c])=>
-        `<span style="font-size:9px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 6px;display:flex;align-items:center;gap:4px">
-          <span style="width:6px;height:6px;border-radius:50%;background:${bColors[t]||'#888'};display:inline-block"></span>
-          ${t} <b>${c}</b>
-        </span>`).join('')}
-    </div>
-  `;
-  el.scrollIntoView({behavior:'smooth', block:'nearest'});
-}
 function countBy(arr,fn){ const m={};arr.forEach(r=>{const k=fn(r);if(k)m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
-function makeBars(id, entries, color) {
-  const el = document.getElementById(id); if (!el) return;
-  const total = entries.reduce((s,e)=>s+e[1],0) || 1;
-  const max   = entries[0]?.[1] || 1;
-  // Determine field key from container id
-  const fieldMap = {'b-building':'building','b-agency':'agency','b-godown':'godown',
-                    'b-block':'block','b-taluk':'taluk'};
-  const field = fieldMap[id] || null;
-  el.innerHTML = entries.map(([label,cnt]) => {
-    const clickable = field ? `style="cursor:pointer" onclick="showBarDrilldown('${id}','${field}','${label.replace(/'/g,"\\'")}',this)"` : '';
-    return `<div class="bar-row" ${clickable}>
-      <div class="bar-label" title="${label}">${label}</div>
-      <div class="bar-track">
-        <div class="bar-fill" style="width:${cnt/max*100}%;background:${color}">
-          <span class="bar-count">${cnt}</span>
-        </div>
-      </div>
-      <div class="bar-pct">${Math.round(cnt/total*100)}%</div>
-    </div>`;
-  }).join('') + `<div id="${id}-drilldown" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px"></div>`;
-}
-
-function showBarDrilldown(barId, field, value, rowEl) {
-  const panel = document.getElementById(barId + '-drilldown');
-  if (!panel) return;
-  const data = window._overviewData || allData;
-  const subset = data.filter(r => g(r, field) === value);
-  const n = subset.length || 1;
-  const pct = v => Math.round(v/n*100) + '%';
-
-  // Toggle
-  if (panel.style.display !== 'none' && panel.dataset.val === value) {
-    panel.style.display = 'none';
-    return;
-  }
-  panel.dataset.val = value;
-  panel.style.display = 'block';
-
-  const full  = subset.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
-  const part  = subset.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
-  const posY  = subset.filter(r=>g(r,'pos')==='உள்ளது').length;
-  const posN  = subset.filter(r=>g(r,'pos')==='இல்லை').length;
-  const urban = subset.filter(r=>g(r,'area')==='நகர்புறம்').length;
-  const rural = subset.filter(r=>g(r,'area')==='கிராமபுறம்').length;
-  const cards = subset.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
-
-  // Block breakdown
-  const blockMap = {};
-  subset.forEach(r => { const b=g(r,'block'); if(b) blockMap[b]=(blockMap[b]||0)+1; });
-
-  const box = (lbl,val,sub,c) => `
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;text-align:center;flex:1;min-width:90px">
-      <div style="font-size:8px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">${lbl}</div>
-      <div style="font-size:17px;font-weight:700;color:${c};font-family:'DM Mono',monospace">${val}</div>
-      <div style="font-size:9px;color:var(--muted)">${sub}</div>
-    </div>`;
-
-  panel.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <span style="font-size:10px;font-weight:700;color:var(--text)">${value} — ${subset.length} கடைகள்</span>
-      <button onclick="document.getElementById('${barId}-drilldown').style.display='none'"
-        style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:1px 7px;font-size:10px;cursor:pointer">✕</button>
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      ${box('முழுநேரம்',full,pct(full),'var(--green)')}
-      ${box('பகுதிநேரம்',part,pct(part),'var(--amber)')}
-      ${box('PoS உள்ளது',posY,pct(posY),'var(--green)')}
-      ${box('PoS இல்லை',posN,pct(posN),'var(--red)')}
-      ${box('நகர்புறம்',urban,pct(urban),'var(--blue)')}
-      ${box('கிராமபுறம்',rural,pct(rural),'var(--teal)')}
-      ${box('அட்டைகள்',cards.toLocaleString(),'','var(--purple)')}
-    </div>
-    <div style="font-size:9px;color:var(--muted);margin-bottom:5px">Block-wise பிரிவு:</div>
-    <div style="display:flex;flex-wrap:wrap;gap:4px">
-      ${Object.entries(blockMap).sort((a,b)=>b[1]-a[1]).map(([b,c])=>`
-        <span style="font-size:10px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:3px 8px">
-          <b style="color:var(--text)">${c}</b> <span style="color:var(--muted)">${b}</span>
-        </span>`).join('')}
-    </div>`;
+function makeBars(id,entries,color){
+  const el=document.getElementById(id);if(!el)return;
+  const total=entries.reduce((s,e)=>s+e[1],0)||1,max=entries[0]?.[1]||1;
+  el.innerHTML=entries.map(([label,cnt])=>`<div class="bar-row"><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${cnt/max*100}%;background:${color}"><span class="bar-count">${cnt}</span></div></div><div class="bar-pct">${Math.round(cnt/total*100)}%</div></div>`).join('');
 }
 function renderOverview(data){
   makeBars('b-building',countBy(data,r=>g(r,'building')),'#a78bfa');
@@ -1534,23 +1194,15 @@ function renderAbstractTable(data) {
 
     const cell = 'border:1px solid var(--border);padding:8px 10px;text-align:center;font-family:\'DM Mono\',monospace;font-size:12px';
     const labelCell = 'border:1px solid var(--border);padding:8px 12px;text-align:left;font-size:12px;color:var(--text);font-weight:500';
-    const safeName = block.replace(/'/g,"\\'");
-    bodyHtml += `<tr style="${i%2===0?'':'background:#0f1117'};cursor:pointer;transition:background .15s"
-      onclick="showAbstractBlockDetail('${safeName}',this)"
-      onmouseover="this.style.background='#1e2a4a'" onmouseout="this.style.background='${i%2===0?'transparent':'#0f1117'}'">
+    bodyHtml += `<tr ${i%2===0?'':'style="background:#0f1117"'}>
       <td style="${cell};color:var(--muted)">${i+1}</td>
-      <td style="${labelCell}">${block} <span class="expand-arrow" style="font-size:9px;color:var(--muted)">▶</span></td>
+      <td style="${labelCell}">${block}</td>
       <td style="${cell};color:var(--teal)">${socs}</td>
       <td style="${cell};color:var(--blue);font-weight:700">${rows.length}</td>
       <td style="${cell};color:${full?'var(--blue)':'var(--muted)'}">${full}</td>
       <td style="${cell};color:${part?'var(--amber)':'var(--muted)'}">${part}</td>
       <td style="${cell};color:${posY?'var(--green)':'var(--muted)'}">${posY}</td>
       <td style="${cell};color:${posN?'var(--red)':'var(--muted)'}">${posN}</td>
-    </tr>
-    <tr id="abstract-detail-${i}" style="display:none">
-      <td colspan="8" style="padding:0;border:1px solid var(--blue)">
-        <div id="abstract-detail-content-${i}" style="padding:12px;background:#0d1424"></div>
-      </td>
     </tr>`;
   });
 
@@ -1714,150 +1366,8 @@ function renderBlock(data){
     const cards=rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
     const blockFinal=finaliseStatus['block:'+block];
     const statusBadge=blockFinal?'<span class="badge badge-final">🔒 Finalised</span>':isBlockOpen(block)?'<span class="badge badge-open">🟢 Open</span>':'<span class="badge badge-locked">🔒 Closed</span>';
-    return `<tr style="cursor:pointer" onclick="showBlockDetail('${block.replace(/'/g,"\\'")}',event)">
-      <td><b>${block}</b></td>
-      <td style="color:var(--muted)">${fmtTaluk(taluk)}</td>
-      <td class="td-mono"><b>${cnt}</b></td>
-      <td class="td-mono">${full}</td>
-      <td class="td-mono">${part}</td>
-      <td class="td-mono">${pos}</td>
-      <td>${statusBadge}</td>
-      <td class="td-mono">${cards.toLocaleString()}</td>
-    </tr>`;
+    return `<tr><td>${block}</td><td style="color:var(--muted)">${fmtTaluk(taluk)}</td><td class="td-mono"><b>${cnt}</b></td><td class="td-mono">${full}</td><td class="td-mono">${part}</td><td class="td-mono">${pos}</td><td>${statusBadge}</td><td class="td-mono">${cards.toLocaleString()}</td></tr>`;
   }).join('');
-
-  // Ensure detail panel exists below table
-  if (!document.getElementById('block-detail-panel')) {
-    const panel = document.createElement('div');
-    panel.id = 'block-detail-panel';
-    panel.className = 'card';
-    panel.style.display = 'none';
-    document.getElementById('block-table-card').after(panel);
-  }
-}
-
-function showBlockDetail(block, event) {
-  if (event) event.stopPropagation();
-  const panel = document.getElementById('block-detail-panel');
-  if (!panel) return;
-
-  // Toggle
-  if (panel.style.display !== 'none' && panel.dataset.block === block) {
-    panel.style.display = 'none';
-    return;
-  }
-  panel.dataset.block = block;
-  panel.style.display = 'block';
-
-  const src = currentUser?.role === 'editor'
-    ? allData.filter(r => g(r,'block') === currentUser.block)
-    : allData;
-  const rows = src.filter(r => g(r,'block') === block);
-  const n = rows.length || 1;
-
-  const full     = rows.filter(r => g(r,'timetype') === 'முழுநேரம்');
-  const part     = rows.filter(r => g(r,'timetype') === 'பகுதிநேரம்');
-  const fullPos  = full.filter(r => g(r,'pos') === 'உள்ளது').length;
-  const fullNpos = full.filter(r => g(r,'pos') === 'இல்லை').length;
-  const partPos  = part.filter(r => g(r,'pos') === 'உள்ளது').length;
-  const partNpos = part.filter(r => g(r,'pos') === 'இல்லை').length;
-  const posY     = rows.filter(r => g(r,'pos') === 'உள்ளது').length;
-  const posN     = rows.filter(r => g(r,'pos') === 'இல்லை').length;
-  const urban    = rows.filter(r => g(r,'area') === 'நகர்புறம்').length;
-  const rural    = rows.filter(r => g(r,'area') === 'கிராமபுறம்').length;
-  const cards    = rows.reduce((s,r) => s+(parseInt(g(r,'cards'))||0), 0);
-  const socs     = new Set(rows.map(r => g(r,'society'))).size;
-
-  // Building types
-  const bTypes = {};
-  rows.forEach(r => { const b = g(r,'building'); if(b) bTypes[b]=(bTypes[b]||0)+1; });
-  const bColors = {'சொந்தம்':'#4f8ef7','அரசு இலவசம்':'#3ecf8e','அரசு வாடகை':'#f5a623','தனியார் வாடகை':'#f06060','தனியார் இலவசம்':'#a78bfa'};
-
-  const pct = v => Math.round(v/n*100) + '%';
-  const statBox = (label, val, sub, color, sub2='') => `
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:130px">
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${label}</div>
-      <div style="font-size:22px;font-weight:700;color:${color};font-family:'DM Mono',monospace">${val}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">${sub}</div>
-      ${sub2 ? `<div style="font-size:10px;color:var(--muted)">${sub2}</div>` : ''}
-    </div>`;
-
-  const twoRow = (label, color, rows2) => `
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:9px;color:${color};text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:8px">${label}</div>
-      <div style="display:flex;gap:10px">
-        ${rows2.map(([lbl,v,pv,c])=>`<div style="flex:1;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:${c};font-family:'DM Mono',monospace">${v}</div>
-          <div style="font-size:9px;color:var(--muted)">${lbl}</div>
-          <div style="font-size:10px;color:${c};font-weight:600">${pv}</div>
-        </div>`).join('<div style="width:1px;background:var(--border)"></div>')}
-      </div>
-    </div>`;
-
-  panel.innerHTML = `
-    <div class="card-title" style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <span>📍 ${block}</span>
-      <span style="font-size:11px;color:var(--muted);font-weight:400">— ${rows.length} கடைகள், ${socs} நிறுவனங்கள்</span>
-      <button onclick="document.getElementById('block-detail-panel').style.display='none'"
-        style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer">✕ மூடு</button>
-    </div>
-
-    <!-- Row 1: Top-level stats -->
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-      ${statBox('மொத்த கடைகள்', rows.length, socs + ' நிறுவனங்கள்', 'var(--blue)')}
-      ${statBox('மொத்த அட்டைகள்', cards.toLocaleString(), 'குடும்பங்கள்', 'var(--purple)')}
-      ${statBox('நகர்புறம்', urban, pct(urban), 'var(--blue)')}
-      ${statBox('கிராமபுறம்', rural, pct(rural), 'var(--teal)')}
-    </div>
-
-    <!-- Row 2: Time type with PoS breakdown -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-      ${twoRow('⏱ நேர வகை', 'var(--blue)', [
-        ['முழுநேரம்', full.length, pct(full.length), 'var(--green)'],
-        ['பகுதிநேரம்', part.length, pct(part.length), 'var(--amber)']
-      ])}
-      ${twoRow('📟 PoS நிலை', 'var(--green)', [
-        ['உள்ளது', posY, pct(posY), 'var(--green)'],
-        ['இல்லை', posN, pct(posN), 'var(--red)']
-      ])}
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:8px">⏱📟 நேர வகை × PoS</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-          <div style="text-align:center;padding:4px;background:#3ecf8e11;border-radius:6px">
-            <div style="font-size:15px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace">${fullPos}</div>
-            <div style="font-size:8px;color:var(--muted)">முழுநேரம் + PoS</div>
-          </div>
-          <div style="text-align:center;padding:4px;background:#f0606011;border-radius:6px">
-            <div style="font-size:15px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace">${fullNpos}</div>
-            <div style="font-size:8px;color:var(--muted)">முழுநேரம் − PoS</div>
-          </div>
-          <div style="text-align:center;padding:4px;background:#f5a62311;border-radius:6px">
-            <div style="font-size:15px;font-weight:700;color:var(--amber);font-family:'DM Mono',monospace">${partPos}</div>
-            <div style="font-size:8px;color:var(--muted)">பகுதிநேரம் + PoS</div>
-          </div>
-          <div style="text-align:center;padding:4px;background:#f0606011;border-radius:6px">
-            <div style="font-size:15px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace">${partNpos}</div>
-            <div style="font-size:8px;color:var(--muted)">பகுதிநேரம் − PoS</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Row 3: Building types -->
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:8px">🏠 கட்டிட வகை</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">
-        ${Object.entries(bTypes).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;min-width:100px">
-            <div style="font-size:18px;font-weight:700;color:${bColors[t]||'#888'};font-family:'DM Mono',monospace">${c}</div>
-            <div style="font-size:9px;color:var(--muted);margin-top:2px">${t}</div>
-            <div style="font-size:10px;color:var(--muted)">${pct(c)}</div>
-          </div>`).join('')}
-      </div>
-    </div>
-  `;
-
-  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 // ── HIERARCHY ──────────────────────────────────────────────
