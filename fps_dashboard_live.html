@@ -313,7 +313,7 @@ tr:last-child td{border-bottom:none}
         <!-- நேர வகை group -->
         <div style="background:var(--bg2);border:1px solid #4f8ef744;border-radius:12px;padding:14px">
           <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ முழுநேரம் - பகுதிநேரம்</div>
-          <div style="display:flex;gap:10px;margin-bottom:10px">
+          <div style="display:flex;gap:10px">
             <div style="flex:1;text-align:center">
               <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">முழுநேரம்</div>
@@ -324,41 +324,6 @@ tr:last-child td{border-bottom:none}
               <div style="font-size:22px;font-weight:700;color:var(--amber);font-family:'DM Mono',monospace" id="s-part">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">பகுதிநேரம்</div>
               <div style="font-size:10px;color:var(--muted)" id="s-part-pct"></div>
-            </div>
-          </div>
-          <!-- PoS breakdown row -->
-          <div style="display:flex;gap:6px">
-            <div style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 8px">
-              <div style="font-size:8px;color:var(--green);font-weight:700;margin-bottom:3px">📟 PoS இயந்திரம்</div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="text-align:center">
-                  <div style="font-size:14px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full-pos">—</div>
-                  <div style="font-size:8px;color:var(--muted)">உள்ளது</div>
-                  <div style="font-size:8px;color:var(--green)" id="s-full-pos-pct"></div>
-                </div>
-                <div style="width:1px;height:30px;background:var(--border)"></div>
-                <div style="text-align:center">
-                  <div style="font-size:14px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace" id="s-full-npos">—</div>
-                  <div style="font-size:8px;color:var(--muted)">இல்லை</div>
-                  <div style="font-size:8px;color:var(--red)" id="s-full-npos-pct"></div>
-                </div>
-              </div>
-            </div>
-            <div style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 8px">
-              <div style="font-size:8px;color:var(--amber);font-weight:700;margin-bottom:3px">📟 PoS இயந்திரம்</div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="text-align:center">
-                  <div style="font-size:14px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-part-pos">—</div>
-                  <div style="font-size:8px;color:var(--muted)">உள்ளது</div>
-                  <div style="font-size:8px;color:var(--green)" id="s-part-pos-pct"></div>
-                </div>
-                <div style="width:1px;height:30px;background:var(--border)"></div>
-                <div style="text-align:center">
-                  <div style="font-size:14px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace" id="s-part-npos">—</div>
-                  <div style="font-size:8px;color:var(--muted)">இல்லை</div>
-                  <div style="font-size:8px;color:var(--red)" id="s-part-npos-pct"></div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -418,6 +383,7 @@ tr:last-child td{border-bottom:none}
       <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access Control</button>
       <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">திருத்தம் மேற்கொள்ளப்பட்டவற்றின் விவரம்</button>
       <button class="tab" onclick="switchView('compare')" id="tab-compare" style="display:none">📊 ஒப்பிடு பார்வை</button>
+      <button class="tab" onclick="switchView('ekyc')" id="tab-ekyc">📋 e-KYC Review</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -1156,17 +1122,6 @@ function updateStats(data) {
   setText('s-part',part); setText('s-part-pct',pct(part)); setText('s-pos',pos); setText('s-pos-pct',pct(pos));
   setText('s-nopos',nopos); setText('s-nopos-pct',pct(nopos)); setText('s-cards',cards.toLocaleString());
   setText('s-urban',urban); setText('s-urban-pct',pct(urban)); setText('s-rural',rural); setText('s-rural-pct',pct(rural));
-
-  // PoS breakdown within Full-time / Part-time
-  const fullPos  = data.filter(r=>g(r,'timetype')==='முழுநேரம்' && g(r,'pos')==='உள்ளது').length;
-  const fullNpos = data.filter(r=>g(r,'timetype')==='முழுநேரம்' && g(r,'pos')==='இல்லை').length;
-  const partPos  = data.filter(r=>g(r,'timetype')==='பகுதிநேரம்' && g(r,'pos')==='உள்ளது').length;
-  const partNpos = data.filter(r=>g(r,'timetype')==='பகுதிநேரம்' && g(r,'pos')==='இல்லை').length;
-  const fullN = full || 1, partN = part || 1;
-  setText('s-full-pos',  fullPos);  setText('s-full-pos-pct',  Math.round(fullPos/fullN*100)+'%');
-  setText('s-full-npos', fullNpos); setText('s-full-npos-pct', Math.round(fullNpos/fullN*100)+'%');
-  setText('s-part-pos',  partPos);  setText('s-part-pos-pct',  Math.round(partPos/partN*100)+'%');
-  setText('s-part-npos', partNpos); setText('s-part-npos-pct', Math.round(partNpos/partN*100)+'%');
 
   // Building type group
   const buildingEl = document.getElementById('s-building-group');
