@@ -222,8 +222,8 @@ tr:last-child td{border-bottom:none}
 .overlay-box{background:var(--bg2);border:1px solid var(--red);border-radius:16px;padding:36px;max-width:380px}
 
 /* VIEWS */
-#view-overview,#view-hierarchy,#view-taluk,#view-block,#view-data,#view-access,#view-audit,#view-compare,#view-ekyc{display:none}
-#view-overview.active,#view-hierarchy.active,#view-taluk.active,#view-block.active,#view-data.active,#view-access.active,#view-audit.active,#view-compare.active,#view-ekyc.active{display:block}
+#view-overview,#view-hierarchy,#view-taluk,#view-block,#view-data,#view-pivot,#view-access,#view-audit,#view-compare,#view-ekyc{display:none}
+#view-overview.active,#view-hierarchy.active,#view-taluk.active,#view-block.active,#view-data.active,#view-pivot.active,#view-access.active,#view-audit.active,#view-compare.active,#view-ekyc.active{display:block}
 
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px}
 .notice-bar{border-radius:8px;padding:8px 12px;font-size:11px;margin-bottom:12px;line-height:1.6}
@@ -282,7 +282,7 @@ tr:last-child td{border-bottom:none}
       <div class="tbadge" id="user-role-badge"></div>
       <div class="tuser" id="user-label-badge"></div>
       <button class="btn btn-outline" onclick="exportCSV()" id="btn-csv" style="display:none">CSV</button>
-      <button class="btn btn-outline" onclick="exportExcel()" id="btn-excel" style="display:none;color:var(--green);border-color:#3ecf8e44">⬇ Excel</button>
+      <button class="btn btn-outline" onclick="openExcelOptions()" id="btn-excel" style="display:none;color:var(--green);border-color:#3ecf8e44">⬇ Excel</button>
       <button class="btn btn-outline" onclick="downloadAuditExcel()" id="btn-audit-dl" style="display:none;color:var(--amber);border-color:#f5a62344">⬇ திருத்த வரலாறு</button>
       <button class="btn btn-outline" onclick="loadData()">↻</button>
       <button class="btn btn-outline" id="btn-logout-placeholder" onclick="doLogout()" style="color:var(--red)">Logout</button>
@@ -377,13 +377,11 @@ tr:last-child td{border-bottom:none}
     <div class="tabs" id="main-tabs">
       <button class="tab active" onclick="switchView('overview')" id="tab-overview">மேற்பார்வை</button>
       <button class="tab" onclick="switchView('hierarchy')" id="tab-hierarchy">📊 இதுவரை பதிவு செய்யப்பட்டுள்ளவற்றின் விவரம்</button>
-      <button class="tab" onclick="switchView('taluk')" id="tab-taluk">Taluk</button>
-      <button class="tab" onclick="switchView('block')" id="tab-block">Block</button>
       <button class="tab" onclick="switchView('data')" id="tab-data">✏️ தரவுகளில் திருத்தம் மேற்கொள்</button>
+      <button class="tab" onclick="switchView('pivot')" id="tab-pivot" style="display:none">🧮 Pivot Analyser</button>
       <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access Control</button>
       <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">திருத்தம் மேற்கொள்ளப்பட்டவற்றின் விவரம்</button>
       <button class="tab" onclick="switchView('compare')" id="tab-compare" style="display:none">📊 ஒப்பிடு பார்வை</button>
-      <button class="tab" onclick="switchView('ekyc')" id="tab-ekyc">📋 e-KYC Review</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -423,6 +421,15 @@ tr:last-child td{border-bottom:none}
             <tbody id="abstract-tbody"></tbody>
           </table>
         </div>
+      </div>
+
+      <!-- BLOCK DETAIL PANEL (opened by clicking an abstract row / bar) -->
+      <div class="card" id="overview-detail" style="display:none">
+        <div class="card-title" style="justify-content:space-between;display:flex;align-items:center">
+          <span id="ov-detail-title">விவரங்கள்</span>
+          <button class="btn btn-outline" style="font-size:11px" onclick="document.getElementById('overview-detail').style.display='none'">✕ மூடு</button>
+        </div>
+        <div id="ov-detail-content"></div>
       </div>
 
       <!-- AGENCY × AREA × TIME-TYPE REPORT TABLE -->
@@ -527,7 +534,7 @@ tr:last-child td{border-bottom:none}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <div class="card-title" style="margin:0" id="data-count">—</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="bulk-actions">
-          <button class="btn btn-outline" onclick="exportExcel()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel</button>
+          <button class="btn btn-outline" onclick="openExcelOptions()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel</button>
           <button class="btn btn-outline" onclick="exportCSV()" style="font-size:11px">⬇ CSV</button>
         </div>
         </div>
@@ -541,6 +548,58 @@ tr:last-child td{border-bottom:none}
           </table>
         </div>
         <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <!-- PIVOT ANALYSER (master only) -->
+    <div id="view-pivot">
+      <div class="card">
+        <div class="card-title">🧮 Pivot Analyser</div>
+        <div class="card-sub">எந்த தரவு வகையையும் வரிசை / நெடுவரிசை / மதிப்பு என அமைத்து pivot செய்யலாம் — Excel PivotTable போல</div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:6px">
+          <div>
+            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Rows (வரிசை)</label>
+            <select class="filter-select" id="pv-row" style="width:100%" onchange="renderPivot()"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Columns (நெடுவரிசை)</label>
+            <select class="filter-select" id="pv-col" style="width:100%" onchange="renderPivot()"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Value (மதிப்பு)</label>
+            <select class="filter-select" id="pv-val" style="width:100%" onchange="renderPivot()"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Aggregation</label>
+            <select class="filter-select" id="pv-agg" style="width:100%" onchange="renderPivot()">
+              <option value="count">Count (எண்ணிக்கை)</option>
+              <option value="sum">Sum (கூட்டுத்தொகை)</option>
+              <option value="avg">Average (சராசரி)</option>
+              <option value="min">Min</option>
+              <option value="max">Max</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;align-items:center">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer">
+            <input type="checkbox" id="pv-totals" checked onchange="renderPivot()" style="accent-color:var(--blue)"> Row + Column totals காட்டு
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer">
+            <input type="checkbox" id="pv-heat" checked onchange="renderPivot()" style="accent-color:var(--blue)"> Heatmap வண்ணம்
+          </label>
+          <div style="flex:1;min-width:10px"></div>
+          <button class="btn btn-outline" onclick="resetPivot()" style="font-size:11px">↺ Reset</button>
+          <button class="btn btn-outline" onclick="exportPivotExcel()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel</button>
+          <button class="btn btn-outline" onclick="copyPivotTable(this)" style="font-size:11px">📋 Copy table</button>
+        </div>
+      </div>
+
+      <div class="card" id="pivot-result-card">
+        <div class="card-title" id="pivot-title">முடிவு</div>
+        <div id="pivot-summary-strip" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
+        <div class="table-wrap" id="pivot-table-wrap"></div>
       </div>
     </div>
 
@@ -728,6 +787,28 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- EXCEL EXPORT OPTIONS MODAL -->
+<div class="modal-overlay" id="excel-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title">
+      <span>⬇ Excel பதிவிறக்க விருப்பங்கள்</span>
+      <button class="modal-close" onclick="document.getElementById('excel-modal').classList.remove('open')">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">எப்படி வேண்டும் என்பதைத் தேர்வு செய்யவும்:</div>
+    <div id="excel-options" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer">
+        <input type="checkbox" id="excel-include-abstract" checked style="accent-color:var(--blue)">
+        Abstract (சுருக்க அட்டவணை) sheet-ஐ சேர்க்கவும்
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('excel-modal').classList.remove('open')">ரத்து</button>
+      <button class="btn btn-green" onclick="confirmExcelExport()">⬇ பதிவிறக்கு</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="settings-modal">
   <div class="modal" style="max-width:800px">
@@ -886,13 +967,11 @@ function doLogin() {
     // Explicitly show every master-visible tab (defensive — old deployments may have stale styles)
     document.getElementById('tab-overview').style.display = '';
     document.getElementById('tab-hierarchy').style.display = '';
-    document.getElementById('tab-taluk').style.display = '';
-    document.getElementById('tab-block').style.display = '';
     document.getElementById('tab-data').style.display = '';
+    document.getElementById('tab-pivot').style.display = '';
     document.getElementById('tab-access').style.display = '';
     document.getElementById('tab-audit').style.display  = '';
     document.getElementById('tab-compare').style.display = '';
-    document.getElementById('tab-ekyc').style.display = '';
     document.getElementById('btn-csv').style.display = '';
     document.getElementById('btn-excel').style.display = '';
     document.getElementById('btn-audit-dl').style.display = '';
@@ -909,12 +988,10 @@ function doLogin() {
     roleBadge.textContent = 'Editor';
     roleBadge.className   = 'tbadge tbadge-editor';
     // Hide master-only tabs (explicit defense-in-depth even though HTML default is none)
-    document.getElementById('tab-taluk').style.display    = 'none';
-    document.getElementById('tab-block').style.display    = 'none';
+    document.getElementById('tab-pivot').style.display    = 'none';  // RESTRICTED
     document.getElementById('tab-overview').style.display = '';      // editors get Overview now (their own block)
     document.getElementById('tab-access').style.display   = 'none';  // RESTRICTED
     document.getElementById('tab-compare').style.display  = 'none';  // RESTRICTED
-    document.getElementById('tab-ekyc').style.display     = 'none';  // RESTRICTED — master uploads only
     // Audit tab IS visible for editors (read-only) — show it explicitly
     document.getElementById('tab-audit').style.display    = '';
     document.getElementById('editor-hero').style.display='block';
@@ -1146,15 +1223,18 @@ function updateStats(data) {
 function setText(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
 function setDonut(id,dash,c,off){ const e=document.getElementById(id); if(e){ e.setAttribute('stroke-dasharray',dash+' '+c); e.setAttribute('stroke-dashoffset',off); } }
 function countBy(arr,fn){ const m={};arr.forEach(r=>{const k=fn(r);if(k)m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
-function makeBars(id,entries,color){
+function makeBars(id,entries,color,dimKey){
   const el=document.getElementById(id);if(!el)return;
   const total=entries.reduce((s,e)=>s+e[1],0)||1,max=entries[0]?.[1]||1;
-  el.innerHTML=entries.map(([label,cnt])=>`<div class="bar-row"><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${cnt/max*100}%;background:${color}"><span class="bar-count">${cnt}</span></div></div><div class="bar-pct">${Math.round(cnt/total*100)}%</div></div>`).join('');
+  el.innerHTML=entries.map(([label,cnt])=>{
+    const click = dimKey ? ` onclick="renderOverviewDetail('${dimKey}','${String(label).replace(/'/g,"\\'")}')" style="cursor:pointer" title="${label} — விவரம் காண க்ளிக் செய்யவும்"` : '';
+    return `<div class="bar-row"${click}><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${cnt/max*100}%;background:${color}"><span class="bar-count">${cnt}</span></div></div><div class="bar-pct">${Math.round(cnt/total*100)}%</div></div>`;
+  }).join('');
 }
 function renderOverview(data){
-  makeBars('b-building',countBy(data,r=>g(r,'building')),'#a78bfa');
-  makeBars('b-agency',  countBy(data,r=>g(r,'agency')),  '#2dd4bf');
-  makeBars('b-godown',  countBy(data,r=>g(r,'godown')),  '#f5a623');
+  makeBars('b-building',countBy(data,r=>g(r,'building')),'#a78bfa','building');
+  makeBars('b-agency',  countBy(data,r=>g(r,'agency')),  '#2dd4bf','agency');
+  makeBars('b-godown',  countBy(data,r=>g(r,'godown')),  '#f5a623','godown');
   renderAbstractTable(data);
   renderAgencyReport(data);
 }
@@ -1194,9 +1274,10 @@ function renderAbstractTable(data) {
 
     const cell = 'border:1px solid var(--border);padding:8px 10px;text-align:center;font-family:\'DM Mono\',monospace;font-size:12px';
     const labelCell = 'border:1px solid var(--border);padding:8px 12px;text-align:left;font-size:12px;color:var(--text);font-weight:500';
-    bodyHtml += `<tr ${i%2===0?'':'style="background:#0f1117"'}>
+    const safeBlk = block.replace(/'/g,"\\'");
+    bodyHtml += `<tr class="abstract-row" style="cursor:pointer;${i%2===0?'':'background:#0f1117'}" onclick="abstractRowClick('${safeBlk}')" title="${block} — விரிவான விவரம் காண க்ளிக் செய்யவும்">
       <td style="${cell};color:var(--muted)">${i+1}</td>
-      <td style="${labelCell}">${block}</td>
+      <td style="${labelCell}">${block} <span style="font-size:9px;color:var(--blue)">▸</span></td>
       <td style="${cell};color:var(--teal)">${socs}</td>
       <td style="${cell};color:var(--blue);font-weight:700">${rows.length}</td>
       <td style="${cell};color:${full?'var(--blue)':'var(--muted)'}">${full}</td>
@@ -1218,6 +1299,94 @@ function renderAbstractTable(data) {
   </tr>`;
 
   tbody.innerHTML = bodyHtml;
+}
+
+// ── BLOCK DETAIL PANEL (Overview abstract row / bar click) ────────
+function abstractRowClick(block) {
+  renderOverviewDetail('block', block);
+}
+
+// Renders a rich breakdown panel into #overview-detail for a given dimension/value
+function renderOverviewDetail(dimKey, value) {
+  const panel = document.getElementById('overview-detail');
+  const titleEl = document.getElementById('ov-detail-title');
+  const content = document.getElementById('ov-detail-content');
+  if (!panel) return;
+
+  const base = currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData;
+  const rows = base.filter(r => g(r, dimKey) === value);
+  const total = rows.length || 1;
+
+  const dimNames = {block:'ஒன்றியம்',taluk:'வட்டம்',society:'நிறுவனம்',agency:'Agency',building:'கட்டிட வகை',godown:'கிடங்கு'};
+  titleEl.textContent = (dimNames[dimKey]||dimKey) + ': ' + (dimKey==='taluk'?fmtTaluk(value):value) + ' — ' + rows.length + ' கடைகள்';
+
+  const full = rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+  const part = rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+  const posY = rows.filter(r=>g(r,'pos')==='உள்ளது').length;
+  const posN = rows.filter(r=>g(r,'pos')==='இல்லை').length;
+  const cards = rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+  const socs = new Set(rows.map(r=>g(r,'society')).filter(Boolean)).size;
+  const pct = n => Math.round(n/total*100);
+
+  const ff = rows.filter(r=>g(r,'timetype')==='முழுநேரம்' && g(r,'pos')==='உள்ளது').length;
+  const fn = rows.filter(r=>g(r,'timetype')==='முழுநேரம்' && g(r,'pos')==='இல்லை').length;
+  const pf = rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்' && g(r,'pos')==='உள்ளது').length;
+  const pn = rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்' && g(r,'pos')==='இல்லை').length;
+
+  const bldg = {};
+  rows.forEach(r=>{ const b=g(r,'building'); if(b) bldg[b]=(bldg[b]||0)+1; });
+  const bldgEntries = Object.entries(bldg).sort((a,b)=>b[1]-a[1]);
+
+  const agency = {};
+  rows.forEach(r=>{ const a=g(r,'agency'); if(a) agency[a]=(agency[a]||0)+1; });
+  const agencyEntries = Object.entries(agency).sort((a,b)=>b[1]-a[1]);
+
+  const sb = (label,val,color,sub)=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;min-width:110px;flex:1">
+    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${label}</div>
+    <div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:${color}">${val}</div>
+    ${sub?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${sub}</div>`:''}</div>`;
+
+  const gridCell = (label,val,color)=>`<div style="background:var(--bg3);border:1px solid ${color}44;border-radius:8px;padding:12px;text-align:center">
+    <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:${color}">${val}</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:3px">${label}</div></div>`;
+
+  content.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      ${sb('மொத்த கடைகள்', rows.length, 'var(--blue)')}
+      ${sb('நிறுவனங்கள்', socs, 'var(--teal)')}
+      ${sb('முழுநேரம்', full, 'var(--green)', pct(full)+'%')}
+      ${sb('பகுதிநேரம்', part, 'var(--amber)', pct(part)+'%')}
+      ${sb('PoS உள்ளது', posY, 'var(--green)', pct(posY)+'%')}
+      ${sb('PoS இல்லை', posN, 'var(--red)', pct(posN)+'%')}
+      ${sb('மொத்த அட்டைகள்', cards.toLocaleString(), 'var(--purple)')}
+    </div>
+
+    <div class="grid2">
+      <div class="card" style="margin:0;background:var(--bg3)">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">⏱ நேரம் × 📟 PoS (2×2)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${gridCell('முழுநேரம் + PoS✓', ff, 'var(--green)')}
+          ${gridCell('முழுநேரம் + PoS✗', fn, 'var(--amber)')}
+          ${gridCell('பகுதிநேரம் + PoS✓', pf, 'var(--teal)')}
+          ${gridCell('பகுதிநேரம் + PoS✗', pn, 'var(--red)')}
+        </div>
+      </div>
+      <div class="card" style="margin:0;background:var(--bg3)">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">🏠 கட்டிட வகை</div>
+        ${bldgEntries.map(([b,c])=>{
+          const w=Math.round(c/total*100);
+          return `<div class="bar-row"><div class="bar-label" title="${b}">${b}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--amber)"><span class="bar-count">${c}</span></div></div><div class="bar-pct">${w}%</div></div>`;
+        }).join('') || '<div style="font-size:11px;color:var(--muted)">தரவு இல்லை</div>'}
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin:14px 0 10px;text-transform:uppercase;letter-spacing:.04em">🏢 Agency</div>
+        ${agencyEntries.map(([a,c])=>{
+          const w=Math.round(c/total*100);
+          return `<div class="bar-row"><div class="bar-label" title="${a}">${a}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--teal)"><span class="bar-count">${c}</span></div></div><div class="bar-pct">${w}%</div></div>`;
+        }).join('') || '<div style="font-size:11px;color:var(--muted)">தரவு இல்லை</div>'}
+      </div>
+    </div>`;
+
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 function renderAgencyReport(data) {
@@ -3110,6 +3279,161 @@ function exportExcel() {
   XLSX.writeFile(wb, fname);
 }
 
+// ── EXCEL EXPORT OPTIONS (modal) ───────────────────────────
+// Column definition shared by all export modes
+const EXPORT_COLS_DEF = [
+  ['serial','வ.எண்'],['shopcode','கடை குறியீடு'],['shopname','கடை பெயர்'],
+  ['timetype','நேர வகை'],['cards','அட்டைகள்'],['opendays','திறந்த நாட்கள்'],
+  ['pos','PoS'],['posother','தாய்க்கடை PoS'],['building','கட்டிட வகை'],
+  ['buildingname','கட்டடம் பெயர்'],['seller','விற்பனையாளர்'],['phone','கைபேசி'],
+  ['area','அமைவிடம்'],['godown','கிடங்கு'],['taluk','வட்டம்'],
+  ['mla','சட்டமன்ற தொகுதி'],['mp','பாராளுமன்ற தொகுதி'],['agency','Agency Group'],['remarks','குறிப்பு']
+];
+
+function openExcelOptions() {
+  const isEditor = currentUser?.role === 'editor';
+  const opts = isEditor ? [
+    {mode:'one', icon:'📄', title:'அனைத்தும் ஒரே sheet-ல்', sub:'உங்கள் block-ன் எல்லா கடைகளும் ஒரு தாளில்'},
+    {mode:'society', icon:'📑', title:'நிறுவனம் வாரியாக (Society-wise)', sub:'ஒவ்வொரு கூட்டுறவு நிறுவனத்திற்கும் தனி sheet'}
+  ] : [
+    {mode:'one', icon:'📄', title:'அனைத்தும் ஒரே sheet-ல்', sub:'மாவட்டத்தின் எல்லா கடைகளும் ஒரே தாளில்'},
+    {mode:'block', icon:'🏢', title:'ஒன்றியம் வாரியாக (21 Block sheets)', sub:'ஒவ்வொரு ஒன்றியத்திற்கும் தனி sheet'},
+    {mode:'society', icon:'📑', title:'நிறுவனம் வாரியாக (Society-wise sheets)', sub:'ஒவ்வொரு கூட்டுறவு நிறுவனத்திற்கும் தனி sheet'}
+  ];
+
+  const box = document.getElementById('excel-options');
+  box.innerHTML = opts.map((o,i)=>`
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
+      <input type="radio" name="excel-mode" value="${o.mode}" ${i===0?'checked':''} style="accent-color:var(--green);margin-top:2px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${o.icon} ${o.title}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${o.sub}</div>
+      </div>
+    </label>`).join('');
+  document.getElementById('excel-modal').classList.add('open');
+}
+
+function confirmExcelExport() {
+  const mode = document.querySelector('input[name="excel-mode"]:checked')?.value || 'one';
+  const withAbstract = document.getElementById('excel-include-abstract').checked;
+  document.getElementById('excel-modal').classList.remove('open');
+  runExcelExport(mode, withAbstract);
+}
+
+// Build the styled abstract (index) sheet from grouped data
+function buildAbstractSheet(blockMap) {
+  const idxRows = [[
+    'வ.எண்','Block','Society','மொத்த கடைகள்','முழுநேரம்','பகுதிநேரம்',
+    'PoS உள்ளவை','PoS இல்லாதவை','நகர்புறம்','கிராமபுறம்','மொத்த அட்டைகள்'
+  ]];
+  let s=1, gT=0,gF=0,gP=0,gPY=0,gPN=0,gU=0,gR=0,gC=0;
+  Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
+    Object.keys(blockMap[blk]).sort((a,b)=>a.localeCompare(b,'ta')).forEach(soc=>{
+      const rows=blockMap[blk][soc];
+      const full=rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+      const part=rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
+      const posY=rows.filter(r=>g(r,'pos')==='உள்ளது').length;
+      const posN=rows.filter(r=>g(r,'pos')==='இல்லை').length;
+      const urban=rows.filter(r=>g(r,'area')==='நகர்புறம்').length;
+      const rural=rows.filter(r=>g(r,'area')==='கிராமபுறம்').length;
+      const cards=rows.reduce((x,r)=>x+(parseInt(g(r,'cards'))||0),0);
+      idxRows.push([s++,blk,soc,rows.length,full,part,posY,posN,urban,rural,cards]);
+      gT+=rows.length;gF+=full;gP+=part;gPY+=posY;gPN+=posN;gU+=urban;gR+=rural;gC+=cards;
+    });
+  });
+  idxRows.push(['','மொத்தம்','',gT,gF,gP,gPY,gPN,gU,gR,gC]);
+  const ws=XLSX.utils.aoa_to_sheet(idxRows);
+  ws['!cols']=[{wch:6},{wch:20},{wch:22},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:14}];
+  for(let c=0;c<11;c++){const cell=ws[XLSX.utils.encode_cell({r:0,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1565C0'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
+  const lr=idxRows.length-1;
+  for(let c=0;c<11;c++){const cell=ws[XLSX.utils.encode_cell({r:lr,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1A237E'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
+  ws['!freeze']={xSplit:0,ySplit:1};
+  return ws;
+}
+
+// Build a data sheet (array of rows) with header + sign-off
+function buildDataSheet(rows, titleText, signLeft, signRight) {
+  const colKeys = EXPORT_COLS_DEF.map(([k])=>k);
+  const colLabels = EXPORT_COLS_DEF.map(([,l])=>l);
+  const sorted = rows.slice().sort((a,b)=>{
+    const bc=g(a,'block').localeCompare(g(b,'block'),'ta'); if(bc)return bc;
+    const sc=g(a,'society').localeCompare(g(b,'society'),'ta'); if(sc)return sc;
+    return (parseInt(g(a,'serial'))||0)-(parseInt(g(b,'serial'))||0);
+  });
+  const dataRows = sorted.map(r=>colKeys.map(k=>g(r,k)||''));
+  const blank = Array(colKeys.length).fill('');
+  const sign1 = Array(colKeys.length).fill(''); const sign2 = Array(colKeys.length).fill('');
+  sign1[0]='செயலாளர் / செயலாட்சியார்'; sign1[Math.floor(colKeys.length/2)]='மு.நி.ஆ / கூ.சா.ப';
+  sign2[0]=signLeft||''; sign2[Math.floor(colKeys.length/2)]=signRight||'';
+  const aoa = [[titleText], colLabels, ...dataRows, blank, blank, sign1, sign2];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const t=ws['A1']; if(t)t.s={fill:{fgColor:{rgb:'0D47A1'}},font:{color:{rgb:'FFFFFF'},bold:true,sz:12}};
+  for(let c=0;c<colKeys.length;c++){const cell=ws[XLSX.utils.encode_cell({r:1,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1565C0'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
+  ws['!cols']=[{wch:7},{wch:14},{wch:26},{wch:12},{wch:10},{wch:18},{wch:10},{wch:16},{wch:14},{wch:18},{wch:18},{wch:14},{wch:12},{wch:14},{wch:16},{wch:18},{wch:18},{wch:14},{wch:20}];
+  ws['!freeze']={xSplit:0,ySplit:2};
+  return ws;
+}
+
+function runExcelExport(mode, withAbstract) {
+  const baseData = filteredData.length ? filteredData : allData;
+  const src = currentUser?.role==='editor'
+    ? baseData.filter(r=>g(r,'block')===currentUser.block) : baseData;
+  if (!src.length) { alert('தரவு இல்லை — முதலில் data load ஆகட்டும்'); return; }
+
+  // Group by block → society
+  const blockMap = {};
+  src.forEach(r=>{
+    const blk=g(r,'block')||'(unknown)'; const soc=g(r,'society')||'(unknown)';
+    (blockMap[blk]=blockMap[blk]||{})[soc]=(blockMap[blk][soc]||[]);
+    blockMap[blk][soc].push(r);
+  });
+
+  const wb = XLSX.utils.book_new();
+  if (withAbstract) XLSX.utils.book_append_sheet(wb, buildAbstractSheet(blockMap), 'Abstract');
+
+  const usedNames = [];
+  const uniqName = (raw, serial) => {
+    let nm = (String(serial).padStart(2,'0')+'. '+raw.replace(/[\\\/\?\*\[\]:]/g,'-')).slice(0,31);
+    let c=2; while(usedNames.includes(nm)){ nm=(String(serial).padStart(2,'0')+'. '+raw).slice(0,28)+'-'+(c++); }
+    usedNames.push(nm); return nm;
+  };
+
+  let scopeName = currentUser?.role==='editor' ? (currentUser.block+'_') : '';
+
+  if (mode === 'one') {
+    // Single flat sheet of all shops
+    const allRows = [];
+    Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
+      Object.keys(blockMap[blk]).sort((a,b)=>a.localeCompare(b,'ta')).forEach(soc=>{
+        allRows.push(...blockMap[blk][soc]);
+      });
+    });
+    const ws = buildDataSheet(allRows, 'அனைத்து கடைகள் — ' + (currentUser?.role==='editor'?currentUser.block:'திருவண்ணாமலை மாவட்டம்'), '', '');
+    XLSX.utils.book_append_sheet(wb, ws, 'All Shops');
+  }
+  else if (mode === 'block') {
+    let serial=1;
+    Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
+      const rows=[]; Object.values(blockMap[blk]).forEach(arr=>rows.push(...arr));
+      const ws = buildDataSheet(rows, blk + ' — ' + rows.length + ' கடைகள்', blk, '');
+      XLSX.utils.book_append_sheet(wb, ws, uniqName(blk, serial++));
+    });
+  }
+  else { // society
+    let serial=1;
+    Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
+      Object.keys(blockMap[blk]).sort((a,b)=>a.localeCompare(b,'ta')).forEach(soc=>{
+        const rows=blockMap[blk][soc];
+        const ws = buildDataSheet(rows, blk+' → '+soc, soc, blk);
+        XLSX.utils.book_append_sheet(wb, ws, uniqName(soc, serial++));
+      });
+    });
+  }
+
+  const modeTag = mode==='one'?'AllInOne': mode==='block'?'BlockWise':'SocietyWise';
+  XLSX.writeFile(wb, 'FPS_'+scopeName+modeTag+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
 // ── AUDIT LOG DOWNLOAD ─────────────────────────────────────
 async function downloadAuditExcel() {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/Audit_Log?key=${CONFIG.API_KEY}`;
@@ -4011,12 +4335,223 @@ function exportEkycPdf() {
   w.document.close();
 }
 
+// ── PIVOT ANALYSER ─────────────────────────────────────────
+// Categorical fields usable as Row/Column dimensions
+const PIVOT_DIM_FIELDS = [
+  ['taluk','வட்டம்'],['block','ஒன்றியம்'],['society','கூட்டுறவு நிறுவனம்'],
+  ['agency','Agency Group'],['area','நகர்புறம் / கிராமபுறம்'],
+  ['timetype','முழுநேரம் / பகுதிநேரம்'],['pos','PoS இயந்திரம்'],
+  ['building','கட்டிட வகை'],['godown','கிடங்கு'],
+  ['mla','சட்டமன்ற தொகுதி'],['mp','பாராளுமன்ற தொகுதி']
+];
+// Value fields — "shops" = count of records; numeric fields allow sum/avg
+const PIVOT_VAL_FIELDS = [
+  ['__count','கடைகள் எண்ணிக்கை (Shops)'],
+  ['cards','குடும்ப அட்டைகள்'],
+  ['opendays','திறந்த நாட்கள் (எண்)']
+];
+let pivotInited = false;
+
+function pivotData() {
+  return currentUser?.role==='editor'
+    ? allData.filter(r=>g(r,'block')===currentUser.block)
+    : allData;
+}
+
+function initPivotControls() {
+  if (pivotInited) return;
+  const rowSel = document.getElementById('pv-row');
+  const colSel = document.getElementById('pv-col');
+  const valSel = document.getElementById('pv-val');
+  if (!rowSel || !colSel || !valSel) return;
+  rowSel.innerHTML = PIVOT_DIM_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
+  colSel.innerHTML = `<option value="">— எதுவுமில்லை (none) —</option>` +
+    PIVOT_DIM_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
+  valSel.innerHTML = PIVOT_VAL_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
+  // Sensible defaults: rows = block, cols = timetype, value = count
+  rowSel.value = 'block';
+  colSel.value = 'timetype';
+  valSel.value = '__count';
+  pivotInited = true;
+}
+
+function resetPivot() {
+  pivotInited = false;
+  initPivotControls();
+  document.getElementById('pv-agg').value = 'count';
+  document.getElementById('pv-totals').checked = true;
+  document.getElementById('pv-heat').checked = true;
+  renderPivot();
+}
+
+function pivotAggregate(values, agg) {
+  if (agg === 'count') return values.length;
+  const nums = values.map(v=>parseFloat(v)).filter(v=>!isNaN(v));
+  if (!nums.length) return 0;
+  if (agg === 'sum') return nums.reduce((a,b)=>a+b,0);
+  if (agg === 'avg') return Math.round(nums.reduce((a,b)=>a+b,0)/nums.length*10)/10;
+  if (agg === 'min') return Math.min(...nums);
+  if (agg === 'max') return Math.max(...nums);
+  return nums.length;
+}
+
+// Build the pivot matrix object — shared by render + export
+function buildPivot() {
+  initPivotControls();
+  const rowKey = document.getElementById('pv-row').value;
+  const colKey = document.getElementById('pv-col').value;     // '' = none
+  const valKey = document.getElementById('pv-val').value;
+  let agg = document.getElementById('pv-agg').value;
+  // If value = count, aggregation is forced to count
+  if (valKey === '__count') agg = 'count';
+
+  const data = pivotData();
+  const rowVals = [...new Set(data.map(r=>g(r,rowKey)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+  const colVals = colKey ? [...new Set(data.map(r=>g(r,colKey)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta')) : ['__all'];
+
+  // cell[r][c] = array of raw values (for count it's just the rows)
+  const cell = {};
+  rowVals.forEach(rv => { cell[rv] = {}; colVals.forEach(cv => cell[rv][cv] = []); });
+
+  data.forEach(r => {
+    const rv = g(r,rowKey);
+    if (!rv || !(rv in cell)) return;
+    const cv = colKey ? g(r,colKey) : '__all';
+    if (!cv || !(cv in cell[rv])) return;
+    if (valKey === '__count') cell[rv][cv].push(1);
+    else cell[rv][cv].push(g(r,valKey));
+  });
+
+  // Compute matrix of aggregated numbers
+  const matrix = {};
+  let maxCell = 0;
+  rowVals.forEach(rv => {
+    matrix[rv] = {};
+    colVals.forEach(cv => {
+      const v = pivotAggregate(cell[rv][cv], agg);
+      matrix[rv][cv] = v;
+      if (v > maxCell) maxCell = v;
+    });
+  });
+
+  return { rowKey, colKey, valKey, agg, rowVals, colVals, matrix, maxCell, data };
+}
+
+function renderPivot() {
+  const wrap = document.getElementById('pivot-table-wrap');
+  if (!wrap) return;
+  const p = buildPivot();
+  const showTotals = document.getElementById('pv-totals').checked;
+  const heat = document.getElementById('pv-heat').checked;
+
+  const dimLabel = k => (PIVOT_DIM_FIELDS.find(f=>f[0]===k)||[,k])[1];
+  const valLabel = (PIVOT_VAL_FIELDS.find(f=>f[0]===p.valKey)||[,p.valKey])[1];
+  const aggLabel = {count:'Count',sum:'Sum',avg:'Average',min:'Min',max:'Max'}[p.agg];
+
+  document.getElementById('pivot-title').textContent =
+    `${aggLabel} of ${valLabel}  —  Rows: ${dimLabel(p.rowKey)}` + (p.colKey?`  ×  Columns: ${dimLabel(p.colKey)}`:'');
+
+  // Format taluk values nicely
+  const fmtV = (k,v)=> k==='taluk' ? fmtTaluk(v) : v;
+
+  // Build column totals + grand total
+  const colTotals = {}; let grand = 0;
+  p.colVals.forEach(cv => { colTotals[cv] = 0; });
+  const rowTotals = {};
+  p.rowVals.forEach(rv => {
+    let rt = 0;
+    p.colVals.forEach(cv => { rt += p.matrix[rv][cv]; colTotals[cv] += p.matrix[rv][cv]; });
+    rowTotals[rv] = rt; grand += rt;
+  });
+
+  const heatBg = v => {
+    if (!heat || !p.maxCell || !v) return '';
+    const t = v / p.maxCell;
+    // blue scale
+    const alpha = (0.08 + t*0.42).toFixed(2);
+    return `background:rgba(79,142,247,${alpha})`;
+  };
+
+  const hasCols = !!p.colKey;
+  let html = `<table style="min-width:${Math.max(400,(p.colVals.length+2)*110)}px"><thead><tr>
+    <th style="position:sticky;left:0;background:var(--bg3);z-index:2">${dimLabel(p.rowKey)}</th>
+    ${hasCols ? p.colVals.map(cv=>`<th style="text-align:center">${fmtV(p.colKey,cv)}</th>`).join('') : `<th style="text-align:center">${valLabel}</th>`}
+    ${showTotals ? `<th style="text-align:center;color:var(--blue)">மொத்தம்</th>` : ''}
+  </tr></thead><tbody>`;
+
+  p.rowVals.forEach(rv => {
+    html += `<tr>
+      <td style="font-weight:600;position:sticky;left:0;background:var(--bg2);z-index:1">${fmtV(p.rowKey,rv)}</td>
+      ${p.colVals.map(cv=>{
+        const v = p.matrix[rv][cv];
+        return `<td class="td-mono" style="text-align:center;${heatBg(v)}">${v?v.toLocaleString():'<span style="color:var(--muted)">·</span>'}</td>`;
+      }).join('')}
+      ${showTotals ? `<td class="td-mono" style="text-align:center;font-weight:700;color:var(--blue)">${rowTotals[rv].toLocaleString()}</td>` : ''}
+    </tr>`;
+  });
+
+  if (showTotals) {
+    html += `<tr style="border-top:2px solid var(--blue)">
+      <td style="font-weight:700;color:var(--blue);position:sticky;left:0;background:var(--bg3);z-index:1">மொத்தம்</td>
+      ${p.colVals.map(cv=>`<td class="td-mono" style="text-align:center;font-weight:700;color:var(--blue)">${colTotals[cv].toLocaleString()}</td>`).join('')}
+      <td class="td-mono" style="text-align:center;font-weight:700;color:var(--green)">${grand.toLocaleString()}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+
+  // Summary strip
+  document.getElementById('pivot-summary-strip').innerHTML = [
+    {label:'வரிசைகள் (Rows)', val:p.rowVals.length, color:'var(--purple)'},
+    {label:'நெடுவரிசைகள் (Cols)', val:hasCols?p.colVals.length:1, color:'var(--teal)'},
+    {label:'மொத்த கடைகள்', val:p.data.length.toLocaleString(), color:'var(--blue)'},
+    {label:aggLabel+' மொத்தம்', val:grand.toLocaleString(), color:'var(--green)'}
+  ].map(b=>`<div class="ekyc-stat-box"><div class="ekyc-stat-label">${b.label}</div><div class="ekyc-stat-value" style="color:${b.color}">${b.val}</div></div>`).join('');
+}
+
+function pivotToAOA() {
+  const p = buildPivot();
+  const dimLabel = k => (PIVOT_DIM_FIELDS.find(f=>f[0]===k)||[,k])[1];
+  const valLabel = (PIVOT_VAL_FIELDS.find(f=>f[0]===p.valKey)||[,p.valKey])[1];
+  const fmtV = (k,v)=> k==='taluk' ? fmtTaluk(v) : v;
+  const hasCols = !!p.colKey;
+
+  const header = [dimLabel(p.rowKey), ...(hasCols ? p.colVals.map(cv=>fmtV(p.colKey,cv)) : [valLabel]), 'மொத்தம்'];
+  const rows = [header];
+  const colTotals = {}; p.colVals.forEach(cv=>colTotals[cv]=0); let grand=0;
+  p.rowVals.forEach(rv=>{
+    let rt=0; const line=[fmtV(p.rowKey,rv)];
+    p.colVals.forEach(cv=>{ const v=p.matrix[rv][cv]; line.push(v); rt+=v; colTotals[cv]+=v; });
+    line.push(rt); grand+=rt; rows.push(line);
+  });
+  const totalLine=['மொத்தம்']; p.colVals.forEach(cv=>totalLine.push(colTotals[cv])); totalLine.push(grand);
+  rows.push(totalLine);
+  return rows;
+}
+
+function exportPivotExcel() {
+  const aoa = pivotToAOA();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = aoa[0].map(()=>({wch:18}));
+  for (let c=0;c<aoa[0].length;c++){const cell=ws[XLSX.utils.encode_cell({r:0,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1565C0'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pivot');
+  XLSX.writeFile(wb, 'FPS_Pivot_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+async function copyPivotTable(btn) {
+  const table = document.querySelector('#pivot-table-wrap table');
+  if (!table) return;
+  await copyTableInCard('pivot-table-wrap', '#pivot-table-wrap table', btn);
+}
+
 function switchView(name) {
   // Defense-in-depth: editors cannot access master-only views
-  if (currentUser?.role === 'editor' && ['access','compare','taluk','block','ekyc'].includes(name)) {
+  if (currentUser?.role === 'editor' && ['access','compare','taluk','block','ekyc','pivot'].includes(name)) {
     name = 'hierarchy';
   }
-  const views=['overview','hierarchy','taluk','block','data','access','audit','compare','ekyc'];
+  const views=['overview','hierarchy','taluk','block','data','pivot','access','audit','compare','ekyc'];
   views.forEach(v=>{const el=document.getElementById('view-'+v);if(el)el.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById('view-'+name);
@@ -4028,6 +4563,7 @@ function switchView(name) {
   if(name==='audit') loadAudit();
   if(name==='access') renderAccessControl();
   if(name==='data') applyFilters();
+  if(name==='pivot') renderPivot();
   if(name==='ekyc') {
     setupEkycDropzone();
     // For editors: hide upload card, show banner, auto-load latest from cloud
@@ -4063,6 +4599,7 @@ document.addEventListener('keydown',e=>{
 document.getElementById('audit-modal').addEventListener('click',function(e){if(e.target===this)closeAuditModal();});
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('settings-modal').addEventListener('click',function(e){if(e.target===this)document.getElementById('settings-modal').classList.remove('open');});
+document.getElementById('excel-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
 
 // ── MASTER DATA COMPARISON ─────────────────────────────────
 let masterData = null;        // Array of shop objects from uploaded Excel
