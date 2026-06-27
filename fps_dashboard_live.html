@@ -988,7 +988,10 @@ const COLS = {
   pos:'PoS இயந்திரம் உள்ளதா?', posother:'தாய்க்கடை PoS குறியீட்டு எண்',
   building:'கட்டிட வகை', buildingname:'கட்டடத்தின் பெயர்',
   seller:'விற்பனையாளர் பெயர்', phone:'விற்பனையாளர் கைபேசி எண்',
-  remarks:'குறிப்பு', godown:'கிடங்கு'
+  remarks:'குறிப்பு', godown:'கிடங்கு',
+  gender:'விற்பனையாளர் பாலினம்', genderflag:'பாலின சரிபார்ப்பு',
+  haspacker:'கட்டுநர் உள்ளதா?', packername:'கட்டுநர் பெயர்',
+  packerphone:'கட்டுநர் கைபேசி', packergender:'கட்டுநர் பாலினம்'
 };
 
 // ── CRITICAL: Sheet column order (must match Google Sheet header row exactly) ──
@@ -1016,7 +1019,13 @@ const SHEET_COL_ORDER = [
   'seller',       // S: விற்பனையாளர் பெயர்
   'phone',        // T: விற்பனையாளர் கைபேசி எண்
   'remarks',      // U: குறிப்பு
-  'godown'        // V: கிடங்கு
+  'godown',       // V: கிடங்கு
+  'gender',       // W: விற்பனையாளர் பாலினம்
+  'genderflag',   // X: பாலின சரிபார்ப்பு
+  'haspacker',    // Y: கட்டுநர் உள்ளதா?
+  'packername',   // Z: கட்டுநர் பெயர்
+  'packerphone',  // AA: கட்டுநர் கைபேசி
+  'packergender'  // AB: கட்டுநர் பாலினம்
 ];
 
 // Mandatory fields for new-shop form (per form.html validate() function)
@@ -1026,7 +1035,7 @@ const MANDATORY_NEW_SHOP = [
   'shopcode', 'shopname', 'timetype', 'cards', 'opendays',
   'pos', 'building', 'seller', 'phone', 'godown'
 ];
-const OPTIONAL_NEW_SHOP = ['posother', 'buildingname', 'remarks'];
+const OPTIONAL_NEW_SHOP = ['posother', 'buildingname', 'remarks', 'gender', 'genderflag', 'haspacker', 'packername', 'packerphone', 'packergender'];
 
 function g(row, k) { return (row[COLS[k]] || '').toString().trim(); }
 
@@ -1493,6 +1502,8 @@ const SHOPLIST_FIELDS = [
   ['timetype','நேர வகை (full/part)'],['area','நகர்/கிராமம்'],['pos','PoS'],
   ['cards','அட்டைகள்'],['building','கட்டிட வகை'],['agency','Agency'],
   ['godown','கிடங்கு'],['seller','விற்பனையாளர்'],['phone','கைபேசி'],
+  ['gender','விற்பனையாளர் பாலினம்'],
+  ['haspacker','கட்டுநர் உள்ளதா?'],['packername','கட்டுநர் பெயர்'],['packerphone','கட்டுநர் கைபேசி'],['packergender','கட்டுநர் பாலினம்'],
   ['opendays','திறந்த நாட்கள்'],['posother','தாய்க்கடை PoS'],
   ['mla','சட்டமன்ற தொகுதி'],['mp','பாராளுமன்ற தொகுதி'],['remarks','குறிப்பு']
 ];
@@ -2475,6 +2486,13 @@ function makeRow(r) {
   }
 
   const clickFn = editable ? 'openEdit(' + r._row + ')' : 'showReadOnly(' + r._row + ')';
+  // Gender indicator next to seller name
+  const gen = g(r,'gender'); const gflag = g(r,'genderflag');
+  let genBadge = '';
+  if (gen==='ஆண்') genBadge = '<span title="ஆண்" style="color:var(--blue);font-size:11px">♂</span>';
+  else if (gen==='பெண்') genBadge = '<span title="பெண்" style="color:var(--pink)">♀</span>';
+  else if (gen==='திருநங்கை') genBadge = '<span title="திருநங்கை" style="color:var(--purple)">⚧</span>';
+  if (gflag==='CHECK') genBadge += '<span title="பாலினம் சரிபார்க்கவும்" style="color:var(--amber);font-weight:700">⚠</span>';
   return '<tr data-row="' + r._row + '" style="' + rowStyle + '" onclick="' + clickFn + '">' +
     '<td class="td-mono" style="color:var(--muted)">' + g(r,'serial') + '</td>' +
     '<td style="font-size:10px;color:var(--muted)">' + fmtTaluk(g(r,'taluk')) + '</td>' +
@@ -2486,7 +2504,7 @@ function makeRow(r) {
     '<td class="td-mono">' + g(r,'cards') + '</td>' +
     '<td><span class="badge ' + (pos==='உள்ளது'?'badge-yes':'badge-no') + '">' + pos + '</span></td>' +
     '<td style="font-size:10px;color:var(--muted)">' + g(r,'building') + '</td>' +
-    '<td style="font-size:11px">' + g(r,'seller') + '</td>' +
+    '<td style="font-size:11px">' + g(r,'seller') + ' ' + genBadge + '</td>' +
     '<td class="td-mono" style="color:var(--muted);font-size:10px">' + g(r,'phone') + '</td>' +
     '<td>' + statusBadge + delBtnHtml + '</td>' +
     '</tr>';
@@ -2586,6 +2604,9 @@ const EDIT_DROPDOWNS = {
   'கிடங்கு': ["திருவண்ணாமலை","கீழ்பென்னாத்தூர்","புதுப்பாளையம்","தண்டராம்பட்டு","போளூர்","போளூர் (ஜவ்வாது மலைகள்)","எலத்தூர்","ஆரணி","தச்சம்பாடி","செய்யார்","வந்தவாசி","வெம்பாக்கம்"],
   'சட்டமன்ற தொகுதி': ["ஆரணி","கலசபாக்கம்","கீழ்ப்பென்னாத்துர்","செங்கம்","செய்யார்","திருவண்ணாமலை","போளுர்","வந்தவாசி"],
   'பாராளுமன்ற தொகுதி': ["திருவண்ணாமலை","ஆரணி"],
+  'விற்பனையாளர் பாலினம்': ["ஆண்","பெண்","திருநங்கை"],
+  'கட்டுநர் உள்ளதா?': ["இல்லை","உள்ளது"],
+  'கட்டுநர் பாலினம்': ["ஆண்","பெண்","திருநங்கை"],
   'கூட்டுறவு நிறுவனம்': ["அக்ராபாளையம்","அத்திமுர்","அனக்காவூர்","அன்மருதை","அரடாப்பட்டு","அரட்டவாடி","அரியப்பாடி","அருக்காவூர்","அரையாளம்","அழகானந்தல்","ஆக்கூர்","ஆதனூர்","ஆத்துரை","ஆரணி","ஆரணி சிஎம்எஸ்","ஆரணி வைகை கூட்டுறவு பண்டகசாலை","ஆருத்திராபட்டு","ஆர்ப்பாக்கம்","ஆலத்துர்","ஆவூர்","இசுக்குழிக்காட்டேரி","இராதாபுரம்","இளங்காடு","எடத்தனுர்","எம்.வி.நல்லூர்","எஸ் வி நகரம்","எஸ் வி நல்லூர்","ஏ.டி.மங்கலம்","ஓசூர்","கடலாடி","கண்ணமங்கலம்","கமலபுத்துர்","கலசபாக்கம்","களம்பூர்","காஞ்சி","காட்டாம்பூண்டி","காரப்பட்டு","காழியூர் புளியரம்பாக்கம்","கீரனுர்","கீழ்கொடுங்காலூர்","கீழ்நர்மா","கீழ்ப்பென்னாத்துர்","குப்பநத்தம்","குப்பம்","குயிலம்","கே.ப்பி.புதூர்","கே.மடம்","கேட்டவரம்பாளையம்","கேளுர்","கொருக்கை","கொழப்பலூர்","கோட்டுப்பாக்கம்","சந்தவாசல்","சாத்தனுர்","சாலவேடு","சித்தாத்தூர்","சிறுநாத்துர்","சு.காட்டேரி","சுனைப்பட்டு","செ.சொர்ப்பனந்தல்","செ.நாச்சிப்பட்டு","செங்கம்","செங்கம் சி.எம்.எஸ்","செங்காடு","செய்யார் சி.எம்.எஸ்","சேத்துப்பட்டு","சொரகொளத்துர்","சோமாசிப்பாடி","ஜமுனாமரத்துர்","டி,கல்லேரி","டி.என்.ஐ.காரியந்தல்","டி.எம்.எஸ்.மங்கலம்","தச்சம்பட்டு","தச்சம்பாடி","தண்டராம்பட்டு","தண்டரை","தண்டலம்","தலையாம்பள்ளம்","தானிப்பாடி","தி.மா.நு.கூ.மொ.வி.ப.சாலை","திருப்பனங்காடு","திருவண்ணாமலை","திருவண்ணாமலை வே.உ.கூ.வி.சங்கம்","திருவத்திபுரம்","தூசி","தெண்பூண்டிப்பட்டு","தென்கரும்பலுர்","தென்கழனி","தெய்யார்","தெள்ளார்","தெள்ளார்   சி.எம்.எஸ்","தேசூர்","தேத்துறை","தேவிகாபுரம்","தேவிகாபுரம் பண்டகசாலை -1","நம்மியம்பட்டு","நயம்பாடி","நல்லவன்பாளையம்","நல்லூர்","நாடழகானந்தல்","நாயுடுமங்கலம்","நாராயணகுப்பம்","நார்த்தாம்பூண்டி","நாவல்பாக்கம்","நீப்பத்துறை","நெடுங்குணம்","நெடும்பிறை","படவேடு","பனைஓலைப்பாடி","பரமனந்தல்","பல்லி","பழையனுர்","பாச்சல்","பாடகம்","பிரம்மதேசம்","பில்லுர்","புதுப்பாளையம்","புரிசை","பெரணமல்லூர்","பெரியஓலைப்பாடி","பெரியகல்லபாடி","பெரியகிளாம்பாடி","பெரியகோளாப்பாடி","பெறுந்துறைப்பட்டு","பேராயம்பட்டு","பைங்கினர்","போளுர்","போளுர் சி.எம்.எஸ்","மங்கலம்","மட்டதாரி","மண்டகொளத்துர்","மருதாடு","மல்லவாடி","மழையூர்","மாங்கால்","மாம்பட்டு","மாரியநல்லுர்","முளகிரிப்பட்டு","முள்ளண்டிபுரம்","மேக்களுர்","மேனல்லூர்","மேலத்தாங்கல்","மேல்நகர்","மேல்பள்ளிப்பட்டு","மேல்புழுதியூர்","மேல்முடியனுர்","மேல்ராவந்தவாடி","மொடையூர்","மோசவாடி","மோரணம்","ராந்தம்","ரெட்டியார்பாளையம்","வடநாங்கூர்","வடமாதிமங்கலம்","வடமாத்துர்","வடவணக்கம்பாடி","வந்தவாசி","வந்தவாசி கூட்டுறவு பண்டகசாலை","வந்தவாசி சி.எம்.எஸ்","வல்லம்","வள்ளிவாகை","வழுர்","வானாபுரம்","வாழ்குடை","விண்ணமங்கலம்","வீரளுர்","வெம்பாக்கம்","வேங்கிக்கால்","வேட்டவலம்","வேலப்பாடி"]
 };
 
@@ -2606,9 +2627,14 @@ const EDIT_FIELDS=[
   ['buildingname','கட்டடத்தின் பெயர்'],
   ['seller','விற்பனையாளர் பெயர்'],
   ['phone','விற்பனையாளர் கைபேசி எண்'],
+  ['gender','விற்பனையாளர் பாலினம்'],
   ['area','நகர்புறம் / கிராமபுறம்'],
   ['godown','கிடங்கு'],
   ['opendays','திறந்து செயல்படும் நாட்கள்'],
+  ['haspacker','கட்டுநர் உள்ளதா?'],
+  ['packername','கட்டுநர் பெயர்'],
+  ['packerphone','கட்டுநர் கைபேசி'],
+  ['packergender','கட்டுநர் பாலினம்'],
   ['remarks','குறிப்பு']
 ];
 
@@ -2745,7 +2771,8 @@ function openAddShop(block, society, event) {
     agency: sample ? g(sample,'agency') : 'Cooperative',
     timetype: '', cards: '', pos: '', posother: '',
     building: '', buildingname: '', seller: '', phone: '',
-    area: sample ? g(sample,'area') : '', godown: '', opendays: '', remarks: ''
+    area: sample ? g(sample,'area') : '', godown: '', opendays: '', remarks: '',
+    gender: '', genderflag: '', haspacker: 'இல்லை', packername: '', packerphone: '', packergender: ''
   };
 
   const fields = document.getElementById('modal-fields');
@@ -3494,6 +3521,8 @@ const EXPORT_COLS_DEF = [
   ['timetype','நேர வகை'],['cards','அட்டைகள்'],['opendays','திறந்த நாட்கள்'],
   ['pos','PoS'],['posother','தாய்க்கடை PoS'],['building','கட்டிட வகை'],
   ['buildingname','கட்டடம் பெயர்'],['seller','விற்பனையாளர்'],['phone','கைபேசி'],
+  ['gender','விற்பனையாளர் பாலினம்'],
+  ['haspacker','கட்டுநர் உள்ளதா?'],['packername','கட்டுநர் பெயர்'],['packerphone','கட்டுநர் கைபேசி'],['packergender','கட்டுநர் பாலினம்'],
   ['area','அமைவிடம்'],['godown','கிடங்கு'],['taluk','வட்டம்'],
   ['mla','சட்டமன்ற தொகுதி'],['mp','பாராளுமன்ற தொகுதி'],['agency','Agency Group'],['remarks','குறிப்பு']
 ];
@@ -4621,6 +4650,8 @@ function exportEkycPdf() {
 // All assignable fields. type 'dim' = categorical, 'num' = numeric (sum/avg/etc).
 const PIVOT_FIELDS = [
   {key:'__count', label:'கடைகள் எண்ணிக்கை', type:'num', countOnly:true},
+  {key:'__uniqseller', label:'விற்பனையாளர் (தனித்த, phone)', type:'num', countOnly:true, uniqueBy:'phone'},
+  {key:'__uniqpacker', label:'கட்டுநர் (தனித்த, phone)', type:'num', countOnly:true, uniqueBy:'packerphone', requirePacker:true},
   {key:'taluk', label:'வட்டம்', type:'dim'},
   {key:'block', label:'ஒன்றியம்', type:'dim'},
   {key:'society', label:'கூட்டுறவு நிறுவனம்', type:'dim'},
@@ -4630,12 +4661,18 @@ const PIVOT_FIELDS = [
   {key:'pos', label:'PoS இயந்திரம்', type:'dim'},
   {key:'building', label:'கட்டிட வகை', type:'dim'},
   {key:'godown', label:'கிடங்கு', type:'dim'},
+  {key:'gender', label:'விற்பனையாளர் பாலினம்', type:'dim'},
+  {key:'haspacker', label:'கட்டுநர் உள்ளதா?', type:'dim'},
+  {key:'packergender', label:'கட்டுநர் பாலினம்', type:'dim'},
   {key:'mla', label:'சட்டமன்ற தொகுதி', type:'dim'},
   {key:'mp', label:'பாராளுமன்ற தொகுதி', type:'dim'},
   {key:'cards', label:'குடும்ப அட்டைகள்', type:'num'},
   {key:'opendays', label:'திறந்த நாட்கள் (எண்)', type:'num'}
 ];
 function pvField(k){ return PIVOT_FIELDS.find(f=>f.key===k); }
+
+// Normalise a phone to last-10-digits for dedup
+function normPhone10(p){ const d=(p||'').toString().replace(/\D/g,''); return d.length>10?d.slice(-10):(d.length===10?d:''); }
 
 // Pivot state: each zone holds field keys. values holds {key, agg}.
 let pivotState = { filters:[], cols:[], rows:[], values:[] };
@@ -4951,8 +4988,26 @@ function buildPivot() {
     colVals.forEach(cv=>{
       const recs = cell[rv][cv];
       matrix[rv][cv] = values.map(v=>{
-        const vals = v.key==='__count' ? recs : recs.map(r=>g(r,v.key));
-        const out = pivotAggregate(vals, v.agg);
+        const f = pvField(v.key);
+        let out;
+        if (f && f.uniqueBy){
+          // count distinct phone numbers (unique workers); for packers, only rows that have a packer
+          const seen = new Set();
+          recs.forEach(r=>{
+            if (f.requirePacker && g(r,'haspacker')!=='உள்ளது') return;
+            const ph = normPhone10(g(r, f.uniqueBy));
+            if (ph) seen.add(ph);
+            else {
+              // no phone → fall back to name so they aren't lost (count by normalised name)
+              const nm = (f.uniqueBy==='packerphone'? g(r,'packername') : g(r,'seller')).replace(/\s+/g,'').toLowerCase();
+              if (nm) seen.add('n:'+nm);
+            }
+          });
+          out = seen.size;
+        } else {
+          const vals = v.key==='__count' ? recs : recs.map(r=>g(r,v.key));
+          out = pivotAggregate(vals, v.agg);
+        }
         if (out>maxCell) maxCell=out;
         return out;
       });
@@ -5068,12 +5123,28 @@ function renderPivot() {
 
   // Summary strip
   const grandTotal = grand.reduce((a,b)=>a+b,0);
-  document.getElementById('pivot-summary-strip').innerHTML = [
+  const strip = [
     {label:'வரிசைகள் (Rows)', val:p.rowKeys.length?p.rowVals.length:1, color:'var(--purple)'},
     {label:'நெடுவரிசைகள் (Cols)', val:hasCols?p.colVals.length:1, color:'var(--teal)'},
     {label:'மதிப்புகள் (Values)', val:nv, color:'var(--amber)'},
     {label:'வடிகட்டப்பட்ட கடைகள்', val:p.data.length.toLocaleString(), color:'var(--blue)'}
-  ].map(b=>`<div class="ekyc-stat-box"><div class="ekyc-stat-label">${b.label}</div><div class="ekyc-stat-value" style="color:${b.color}">${b.val}</div></div>`).join('');
+  ];
+  // If a unique-worker value is used, also show the TRUE district-wide distinct count
+  const uniqVals = p.values.filter(v=>{ const f=pvField(v.key); return f && f.uniqueBy; });
+  uniqVals.forEach(v=>{
+    const f = pvField(v.key);
+    const seen = new Set();
+    p.data.forEach(r=>{
+      if (f.requirePacker && g(r,'haspacker')!=='உள்ளது') return;
+      const ph = normPhone10(g(r,f.uniqueBy));
+      if (ph) seen.add(ph);
+      else { const nm=(f.uniqueBy==='packerphone'?g(r,'packername'):g(r,'seller')).replace(/\s+/g,'').toLowerCase(); if(nm) seen.add('n:'+nm); }
+    });
+    strip.push({label:'மொத்த தனித்த '+(f.uniqueBy==='packerphone'?'கட்டுநர்':'விற்பனையாளர்'), val:seen.size.toLocaleString(), color:'var(--green)'});
+  });
+  document.getElementById('pivot-summary-strip').innerHTML =
+    strip.map(b=>`<div class="ekyc-stat-box"><div class="ekyc-stat-label">${b.label}</div><div class="ekyc-stat-value" style="color:${b.color}">${b.val}</div></div>`).join('')
+    + (uniqVals.length ? `<div style="flex-basis:100%;font-size:10px;color:var(--muted);margin-top:2px">⚠ குறிப்பு: ஒரு விற்பனையாளர் பல கடைகளில் பணிபுரிந்தால், block/society வாரியான கூட்டுத்தொகை அவரை ஒவ்வொரு குழுவிலும் தனித்தனியே எண்ணும். மேலே உள்ள "மொத்த தனித்த" எண்ணிக்கையே மாவட்ட அளவில் சரியான தனித்த எண்ணிக்கை.</div>` : '');
 }
 
 function pivotToAOA() {
