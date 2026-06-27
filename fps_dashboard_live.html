@@ -204,6 +204,30 @@ tr:last-child td{border-bottom:none}
 .toggle-switch input:checked+.toggle-slider{background:#3ecf8e22;border-color:#3ecf8e}
 .toggle-switch input:checked+.toggle-slider::before{transform:translateX(20px);background:var(--green)}
 
+/* PIVOT (Excel-style field panel) */
+.pv-layout{display:grid;grid-template-columns:230px 1fr;gap:14px}
+@media(max-width:760px){.pv-layout{grid-template-columns:1fr}}
+.pv-fieldlist{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;max-height:340px;overflow-y:auto}
+.pv-fieldlist-title{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.pv-field{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:7px 9px;margin-bottom:6px;font-size:12px;cursor:grab;user-select:none;transition:all .12s}
+.pv-field:hover{border-color:var(--blue);background:#1a1f2e}
+.pv-field.dragging{opacity:.4}
+.pv-field .pv-grip{color:var(--muted);font-size:11px}
+.pv-field .pv-type{margin-left:auto;font-size:9px;padding:1px 6px;border-radius:6px}
+.pv-type-dim{background:#4f8ef722;color:var(--blue)}
+.pv-type-num{background:#3ecf8e22;color:var(--green)}
+.pv-zones{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.pv-zones{grid-template-columns:1fr}}
+.pv-zone{background:var(--bg3);border:1.5px dashed var(--border);border-radius:10px;padding:10px;min-height:84px;transition:all .15s}
+.pv-zone.over{border-color:var(--blue);background:#1a2540}
+.pv-zone-title{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.pv-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--blue);color:var(--text);border-radius:7px;padding:5px 8px;margin:0 5px 5px 0;font-size:11px;cursor:grab}
+.pv-chip.num{border-color:var(--green)}
+.pv-chip .pv-x{cursor:pointer;color:var(--muted);font-size:13px;line-height:1}
+.pv-chip .pv-x:hover{color:var(--red)}
+.pv-chip .pv-agg-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:5px;font-size:10px;padding:1px 3px;font-family:inherit}
+.pv-chip-empty{font-size:11px;color:var(--muted);font-style:italic}
+
 /* PAGINATION */
 .pagination{display:flex;align-items:center;gap:6px;margin-top:12px;justify-content:flex-end}
 .page-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace}
@@ -555,40 +579,60 @@ tr:last-child td{border-bottom:none}
     <div id="view-pivot">
       <div class="card">
         <div class="card-title">🧮 Pivot Analyser</div>
-        <div class="card-sub">எந்த தரவு வகையையும் வரிசை / நெடுவரிசை / மதிப்பு என அமைத்து pivot செய்யலாம் — Excel PivotTable போல</div>
+        <div class="card-sub">Field-ஐ <b>இழுத்து விடவும் (drag)</b> அல்லது <b>tap</b> செய்து ஒரு பகுதிக்கு சேர்க்கவும் — Excel PivotTable போல</div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:6px">
-          <div>
-            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Rows (வரிசை)</label>
-            <select class="filter-select" id="pv-row" style="width:100%" onchange="renderPivot()"></select>
+        <div class="pv-layout" style="margin-top:10px">
+          <!-- Field list -->
+          <div class="pv-fieldlist">
+            <div class="pv-fieldlist-title">📋 Fields (வகைகள்)</div>
+            <div id="pv-field-list"></div>
           </div>
-          <div>
-            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Columns (நெடுவரிசை)</label>
-            <select class="filter-select" id="pv-col" style="width:100%" onchange="renderPivot()"></select>
-          </div>
-          <div>
-            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Value (மதிப்பு)</label>
-            <select class="filter-select" id="pv-val" style="width:100%" onchange="renderPivot()"></select>
-          </div>
-          <div>
-            <label style="display:block;font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Aggregation</label>
-            <select class="filter-select" id="pv-agg" style="width:100%" onchange="renderPivot()">
-              <option value="count">Count (எண்ணிக்கை)</option>
-              <option value="sum">Sum (கூட்டுத்தொகை)</option>
-              <option value="avg">Average (சராசரி)</option>
-              <option value="min">Min</option>
-              <option value="max">Max</option>
-            </select>
+
+          <!-- 4 drop zones -->
+          <div class="pv-zones">
+            <div class="pv-zone" data-zone="filters" ondragover="pvDragOver(event)" ondragleave="pvDragLeave(event)" ondrop="pvDrop(event,'filters')">
+              <div class="pv-zone-title">▼ Filters (வடிகட்டி)</div>
+              <div id="pv-zone-filters"></div>
+            </div>
+            <div class="pv-zone" data-zone="cols" ondragover="pvDragOver(event)" ondragleave="pvDragLeave(event)" ondrop="pvDrop(event,'cols')">
+              <div class="pv-zone-title">▥ Columns (நெடுவரிசை)</div>
+              <div id="pv-zone-cols"></div>
+            </div>
+            <div class="pv-zone" data-zone="rows" ondragover="pvDragOver(event)" ondragleave="pvDragLeave(event)" ondrop="pvDrop(event,'rows')">
+              <div class="pv-zone-title">▤ Rows (வரிசை)</div>
+              <div id="pv-zone-rows"></div>
+            </div>
+            <div class="pv-zone" data-zone="values" ondragover="pvDragOver(event)" ondragleave="pvDragLeave(event)" ondrop="pvDrop(event,'values')">
+              <div class="pv-zone-title">Σ Values (மதிப்பு)</div>
+              <div id="pv-zone-values"></div>
+            </div>
           </div>
         </div>
 
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;align-items:center">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;align-items:center">
           <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer">
-            <input type="checkbox" id="pv-totals" checked onchange="renderPivot()" style="accent-color:var(--blue)"> Row + Column totals காட்டு
+            <input type="checkbox" id="pv-totals" checked onchange="renderPivot()" style="accent-color:var(--blue)"> Row + Column totals
           </label>
           <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer">
             <input type="checkbox" id="pv-heat" checked onchange="renderPivot()" style="accent-color:var(--blue)"> Heatmap வண்ணம்
           </label>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:10px;color:var(--muted);font-weight:600">Row வரிசை:</span>
+            <select class="filter-select" id="pv-rowsort" style="font-size:11px;padding:4px 8px" onchange="renderPivot()">
+              <option value="label">பெயர் வரிசை (A→Z)</option>
+              <option value="official">அதிகாரப்பூர்வ வரிசை (Block)</option>
+              <option value="high">மொத்தம் அதிகம் → குறைவு</option>
+              <option value="low">மொத்தம் குறைவு → அதிகம்</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:10px;color:var(--muted);font-weight:600">Column வரிசை:</span>
+            <select class="filter-select" id="pv-colsort" style="font-size:11px;padding:4px 8px" onchange="pvResetColOrder();renderPivot()">
+              <option value="label">பெயர் வரிசை (A→Z)</option>
+              <option value="official">அதிகாரப்பூர்வ வரிசை (Block)</option>
+              <option value="manual">கைமுறை (▶ swap buttons)</option>
+            </select>
+          </div>
           <div style="flex:1;min-width:10px"></div>
           <button class="btn btn-outline" onclick="resetPivot()" style="font-size:11px">↺ Reset</button>
           <button class="btn btn-outline" onclick="exportPivotExcel()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel</button>
@@ -600,6 +644,53 @@ tr:last-child td{border-bottom:none}
         <div class="card-title" id="pivot-title">முடிவு</div>
         <div id="pivot-summary-strip" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
         <div class="table-wrap" id="pivot-table-wrap"></div>
+      </div>
+    </div>
+
+    <!-- PIVOT: tap-to-assign mini menu -->
+    <div class="modal-overlay" id="pv-assign-modal">
+      <div class="modal" style="max-width:340px">
+        <div class="modal-title">
+          <span id="pv-assign-title">எந்த பகுதிக்கு?</span>
+          <button class="modal-close" onclick="document.getElementById('pv-assign-modal').classList.remove('open')">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px" id="pv-assign-options"></div>
+      </div>
+    </div>
+
+    <!-- SHOP LIST MODAL (opened from clickable detail boxes) -->
+    <div class="modal-overlay" id="shoplist-modal">
+      <div class="modal" style="max-width:920px">
+        <div class="modal-title">
+          <span id="shoplist-title">கடை விவரம்</span>
+          <button class="modal-close" onclick="document.getElementById('shoplist-modal').classList.remove('open')">✕</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn btn-outline" onclick="openShopFieldPicker()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel (fields தேர்வு)</button>
+          <button class="btn btn-outline" onclick="exportShopListPdf()" style="color:var(--amber);border-color:#f5a62344;font-size:11px">⬇ PDF</button>
+          <div style="flex:1"></div>
+          <span id="shoplist-count" style="font-size:11px;color:var(--muted);align-self:center"></span>
+        </div>
+        <div class="table-wrap" id="shoplist-table-wrap" style="max-height:60vh;overflow:auto"></div>
+      </div>
+    </div>
+
+    <!-- SHOP EXCEL FIELD PICKER -->
+    <div class="modal-overlay" id="shopfield-modal">
+      <div class="modal" style="max-width:520px">
+        <div class="modal-title">
+          <span>⬇ Excel — எந்த fields வேண்டும்?</span>
+          <button class="modal-close" onclick="document.getElementById('shopfield-modal').classList.remove('open')">✕</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn btn-outline" style="font-size:11px;flex:1" onclick="shopFieldAll(true)">✓ எல்லாம்</button>
+          <button class="btn btn-outline" style="font-size:11px;flex:1" onclick="shopFieldAll(false)">✕ ஒன்றுமில்லை</button>
+        </div>
+        <div id="shopfield-options" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:46vh;overflow-y:auto"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="document.getElementById('shopfield-modal').classList.remove('open')">ரத்து</button>
+          <button class="btn btn-green" onclick="exportShopListExcel()">⬇ பதிவிறக்கு</button>
+        </div>
       </div>
     </div>
 
@@ -1257,7 +1348,7 @@ function renderAbstractTable(data) {
   }
 
   // Group by block
-  const blocks = [...new Set(data.map(r=>g(r,'block')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+  const blocks = [...new Set(data.map(r=>g(r,'block')).filter(Boolean))].sort(cmpBlock);
 
   let bodyHtml = '';
   let totals = { socs:0, shops:0, full:0, part:0, posY:0, posN:0 };
@@ -1341,52 +1432,148 @@ function renderOverviewDetail(dimKey, value) {
   rows.forEach(r=>{ const a=g(r,'agency'); if(a) agency[a]=(agency[a]||0)+1; });
   const agencyEntries = Object.entries(agency).sort((a,b)=>b[1]-a[1]);
 
-  const sb = (label,val,color,sub)=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;min-width:110px;flex:1">
+  const sb = (label,val,color,sub,filter)=>`<div ${filter?`onclick='showShopList(${JSON.stringify(filter)})' style="cursor:pointer"`:''} title="${filter?'கடை விவரம் பார்க்க க்ளிக் செய்யவும்':''}" data-sbcard="1" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;min-width:110px;flex:1;${filter?'cursor:pointer':''}">
     <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${label}</div>
     <div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:${color}">${val}</div>
     ${sub?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${sub}</div>`:''}</div>`;
 
-  const gridCell = (label,val,color)=>`<div style="background:var(--bg3);border:1px solid ${color}44;border-radius:8px;padding:12px;text-align:center">
+  const gridCell = (label,val,color,filter)=>`<div onclick='showShopList(${JSON.stringify(filter)})' title="கடை விவரம் பார்க்க க்ளிக் செய்யவும்" style="background:var(--bg3);border:1px solid ${color}44;border-radius:8px;padding:12px;text-align:center;cursor:pointer">
     <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:${color}">${val}</div>
     <div style="font-size:10px;color:var(--muted);margin-top:3px">${label}</div></div>`;
 
+  // base filter: this dimension = value
+  const bf = (extra) => Object.assign({title:(dimNames[dimKey]||dimKey)+': '+value}, {[dimKey]:value}, extra||{});
+
   content.innerHTML = `
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-      ${sb('மொத்த கடைகள்', rows.length, 'var(--blue)')}
+      ${sb('மொத்த கடைகள்', rows.length, 'var(--blue)', null, bf())}
       ${sb('நிறுவனங்கள்', socs, 'var(--teal)')}
-      ${sb('முழுநேரம்', full, 'var(--green)', pct(full)+'%')}
-      ${sb('பகுதிநேரம்', part, 'var(--amber)', pct(part)+'%')}
-      ${sb('PoS உள்ளது', posY, 'var(--green)', pct(posY)+'%')}
-      ${sb('PoS இல்லை', posN, 'var(--red)', pct(posN)+'%')}
+      ${sb('முழுநேரம்', full, 'var(--green)', pct(full)+'%', bf({timetype:'முழுநேரம்'}))}
+      ${sb('பகுதிநேரம்', part, 'var(--amber)', pct(part)+'%', bf({timetype:'பகுதிநேரம்'}))}
+      ${sb('PoS உள்ளது', posY, 'var(--green)', pct(posY)+'%', bf({pos:'உள்ளது'}))}
+      ${sb('PoS இல்லை', posN, 'var(--red)', pct(posN)+'%', bf({pos:'இல்லை'}))}
       ${sb('மொத்த அட்டைகள்', cards.toLocaleString(), 'var(--purple)')}
     </div>
 
     <div class="grid2">
       <div class="card" style="margin:0;background:var(--bg3)">
-        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">⏱ நேரம் × 📟 PoS (2×2)</div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">⏱ நேரம் × 📟 PoS (2×2) — க்ளிக் செய்தால் கடை விவரம்</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          ${gridCell('முழுநேரம் + PoS✓', ff, 'var(--green)')}
-          ${gridCell('முழுநேரம் + PoS✗', fn, 'var(--amber)')}
-          ${gridCell('பகுதிநேரம் + PoS✓', pf, 'var(--teal)')}
-          ${gridCell('பகுதிநேரம் + PoS✗', pn, 'var(--red)')}
+          ${gridCell('முழுநேரம் + PoS✓', ff, 'var(--green)', bf({timetype:'முழுநேரம்',pos:'உள்ளது'}))}
+          ${gridCell('முழுநேரம் + PoS✗', fn, 'var(--amber)', bf({timetype:'முழுநேரம்',pos:'இல்லை'}))}
+          ${gridCell('பகுதிநேரம் + PoS✓', pf, 'var(--teal)', bf({timetype:'பகுதிநேரம்',pos:'உள்ளது'}))}
+          ${gridCell('பகுதிநேரம் + PoS✗', pn, 'var(--red)', bf({timetype:'பகுதிநேரம்',pos:'இல்லை'}))}
         </div>
       </div>
       <div class="card" style="margin:0;background:var(--bg3)">
-        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">🏠 கட்டிட வகை</div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">🏠 கட்டிட வகை — க்ளிக் செய்தால் கடை விவரம்</div>
         ${bldgEntries.map(([b,c])=>{
           const w=Math.round(c/total*100);
-          return `<div class="bar-row"><div class="bar-label" title="${b}">${b}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--amber)"><span class="bar-count">${c}</span></div></div><div class="bar-pct">${w}%</div></div>`;
+          return `<div class="bar-row" style="cursor:pointer" onclick='showShopList(${JSON.stringify(bf({building:b}))})' title="${b} — கடை விவரம்"><div class="bar-label">${b}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--amber)"><span class="bar-count">${c}</span></div></div><div class="bar-pct">${w}%</div></div>`;
         }).join('') || '<div style="font-size:11px;color:var(--muted)">தரவு இல்லை</div>'}
         <div style="font-size:11px;font-weight:600;color:var(--muted);margin:14px 0 10px;text-transform:uppercase;letter-spacing:.04em">🏢 Agency</div>
         ${agencyEntries.map(([a,c])=>{
           const w=Math.round(c/total*100);
-          return `<div class="bar-row"><div class="bar-label" title="${a}">${a}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--teal)"><span class="bar-count">${c}</span></div></div><div class="bar-pct">${w}%</div></div>`;
+          return `<div class="bar-row" style="cursor:pointer" onclick='showShopList(${JSON.stringify(bf({agency:a}))})' title="${a} — கடை விவரம்"><div class="bar-label">${a}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:var(--teal)"><span class="bar-count">${c}</span></div></div><div class="bar-pct">${w}%</div></div>`;
         }).join('') || '<div style="font-size:11px;color:var(--muted)">தரவு இல்லை</div>'}
       </div>
     </div>`;
 
   panel.style.display = 'block';
   panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ── SHOP LIST MODAL (from clickable detail boxes) ─────────────
+const SHOPLIST_FIELDS = [
+  ['serial','வ.எண்'],['shopcode','கடை குறியீடு'],['shopname','கடை பெயர்'],
+  ['taluk','வட்டம்'],['block','ஒன்றியம்'],['society','நிறுவனம்'],
+  ['timetype','நேர வகை (full/part)'],['area','நகர்/கிராமம்'],['pos','PoS'],
+  ['cards','அட்டைகள்'],['building','கட்டிட வகை'],['agency','Agency'],
+  ['godown','கிடங்கு'],['seller','விற்பனையாளர்'],['phone','கைபேசி'],
+  ['opendays','திறந்த நாட்கள்'],['posother','தாய்க்கடை PoS'],
+  ['mla','சட்டமன்ற தொகுதி'],['mp','பாராளுமன்ற தொகுதி'],['remarks','குறிப்பு']
+];
+let shopListRows = [];
+let shopListLabel = '';
+
+function showShopList(filter) {
+  const base = currentUser?.role==='editor' ? allData.filter(r=>g(r,'block')===currentUser.block) : allData;
+  const keys = Object.keys(filter).filter(k=>k!=='title');
+  shopListRows = base.filter(r => keys.every(k => g(r,k) === filter[k]));
+
+  shopListRows.sort((a,b)=>{
+    const bc=cmpBlock(g(a,'block'),g(b,'block')); if(bc) return bc;
+    const sc=g(a,'society').localeCompare(g(b,'society'),'ta'); if(sc) return sc;
+    return (parseInt(g(a,'serial'))||0)-(parseInt(g(b,'serial'))||0);
+  });
+
+  const labelMap = {block:'ஒன்றியம்',taluk:'வட்டம்',society:'நிறுவனம்',agency:'Agency',building:'கட்டிட வகை',godown:'கிடங்கு',timetype:'நேரம்',pos:'PoS',area:'அமைவிடம்'};
+  shopListLabel = keys.map(k=>`${labelMap[k]||k}: ${k==='taluk'?fmtTaluk(filter[k]):filter[k]}`).join(' · ');
+
+  document.getElementById('shoplist-title').textContent = '🏪 ' + (filter.title || 'கடைகள்');
+  document.getElementById('shoplist-count').textContent = shopListRows.length + ' கடைகள் — ' + shopListLabel;
+
+  const showCols = ['serial','shopcode','shopname','block','society','timetype','area','pos','cards','seller','phone'];
+  const head = '<tr>' + showCols.map(k=>{
+    const lbl = (SHOPLIST_FIELDS.find(f=>f[0]===k)||[,k])[1];
+    return `<th>${lbl}</th>`;
+  }).join('') + '</tr>';
+  const body = shopListRows.map(r=>'<tr>'+showCols.map(k=>{
+    let v = g(r,k); if(k==='taluk') v=fmtTaluk(v);
+    const cls = (k==='shopcode'||k==='cards')?'td-mono':'';
+    return `<td class="${cls}">${v}</td>`;
+  }).join('')+'</tr>').join('');
+  document.getElementById('shoplist-table-wrap').innerHTML =
+    shopListRows.length ? `<table>${head}${body}</table>` : '<div style="padding:24px;text-align:center;color:var(--muted)">இந்த தேர்வுக்கு கடைகள் இல்லை</div>';
+
+  document.getElementById('shoplist-modal').classList.add('open');
+}
+
+function openShopFieldPicker() {
+  if (!shopListRows.length) { alert('கடைகள் இல்லை'); return; }
+  const defChecked = new Set(['serial','shopcode','shopname','taluk','block','society','timetype','area','pos','cards']);
+  document.getElementById('shopfield-options').innerHTML = SHOPLIST_FIELDS.map(([k,lbl])=>`
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:6px 8px;background:var(--bg3);border-radius:6px;cursor:pointer">
+      <input type="checkbox" class="shopfield-cb" value="${k}" ${defChecked.has(k)?'checked':''} style="accent-color:var(--green)">
+      <span>${lbl}</span>
+    </label>`).join('');
+  document.getElementById('shopfield-modal').classList.add('open');
+}
+function shopFieldAll(state){ document.querySelectorAll('#shopfield-options .shopfield-cb').forEach(cb=>cb.checked=state); }
+
+function exportShopListExcel() {
+  const chosen = [...document.querySelectorAll('#shopfield-options .shopfield-cb:checked')].map(cb=>cb.value);
+  if (!chosen.length) { alert('குறைந்தது ஒரு field தேர்வு செய்யவும்'); return; }
+  const header = chosen.map(k=>(SHOPLIST_FIELDS.find(f=>f[0]===k)||[,k])[1]);
+  const aoa = [header, ...shopListRows.map(r=>chosen.map(k=> k==='taluk'?fmtTaluk(g(r,k)) : (g(r,k)||'') ))];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = chosen.map(()=>({wch:16}));
+  for(let c=0;c<header.length;c++){const cell=ws[XLSX.utils.encode_cell({r:0,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1565C0'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Shops');
+  XLSX.writeFile(wb, 'FPS_ShopList_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  document.getElementById('shopfield-modal').classList.remove('open');
+}
+
+function exportShopListPdf() {
+  if (!shopListRows.length) { alert('கடைகள் இல்லை'); return; }
+  const cols = [['serial','வ.எண்'],['shopcode','குறியீடு'],['shopname','கடை பெயர்'],['block','ஒன்றியம்'],['society','நிறுவனம்'],['timetype','நேரம்'],['area','அமைவிடம்'],['pos','PoS'],['cards','அட்டைகள்'],['seller','விற்பனையாளர்'],['phone','கைபேசி']];
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Shop List</title>
+    <style>
+      body{font-family:Arial,sans-serif;margin:18px;color:#222}
+      h1{font-size:16px;margin:0 0 4px} .sub{color:#666;font-size:11px;margin-bottom:14px}
+      table{border-collapse:collapse;width:100%;font-size:10px}
+      th,td{border:1px solid #999;padding:4px 6px;text-align:left}
+      th{background:#1565c0;color:#fff} tr:nth-child(even){background:#f4f6fb}
+    </style></head><body>
+    <h1>🏛️ Thiruvannamalai — கடை விவரம்</h1>
+    <div class="sub">${shopListLabel} · மொத்தம் ${shopListRows.length} கடைகள் · ${new Date().toLocaleDateString()}</div>
+    <table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody>
+    ${shopListRows.map(r=>`<tr>${cols.map(c=>`<td>${c[0]==='taluk'?fmtTaluk(g(r,c[0])):(g(r,c[0])||'')}</td>`).join('')}</tr>`).join('')}
+    </tbody></table>
+    <scr`+`ipt>setTimeout(()=>window.print(),400);</scr`+`ipt></body></html>`);
+  w.document.close();
 }
 
 function renderAgencyReport(data) {
@@ -2102,6 +2289,24 @@ const ALL_BLOCKS = [
   "வெம்பாக்கம் 1","வெம்பாக்கம் 2"
 ];
 
+// ── OFFICIAL BLOCK ORDER (govt fixed sequence) ────────────────
+// Uses the exact spellings present in FPS_Data so sorting always matches.
+const BLOCK_OFFICIAL_ORDER = [
+  "திருவண்ணாமலை HQ","திருவண்ணாமலை 1","திருவண்ணாமலை 2","துரிஞ்சாபுரம்","கீழ்ப்பென்னாத்துர்",
+  "செங்கம்","புதுப்பாளையம்","தண்டராம்பட்டு","கலசபாக்கம்","போளுர்",
+  "ஜமுனாமரத்துர்","சேத்துப்பட்டு","ஆரணி கிழக்கு","ஆரணி மேற்கு","செய்யார்",
+  "அனக்காவூர்","வெம்பாக்கம் 1","வெம்பாக்கம் 2","வந்தவாசி","பெரணமல்லூர்","தெள்ளார்"
+];
+function blockOrderIndex(name){ const i = BLOCK_OFFICIAL_ORDER.indexOf((name||'').trim()); return i<0?999:i; }
+// Compare two block names by official order, falling back to Tamil alpha
+function cmpBlock(a,b){
+  const ia=blockOrderIndex(a), ib=blockOrderIndex(b);
+  if (ia!==ib) return ia-ib;
+  return (a||'').localeCompare(b||'','ta');
+}
+function sortBlocksOfficial(arr){ return arr.slice().sort(cmpBlock); }
+
+
 function renderAccessControl() {
   const container = document.getElementById('access-rows');
   container.innerHTML = ALL_BLOCKS.map(block => {
@@ -2290,7 +2495,7 @@ function renderDataTable() {
   // Sort: Block → Society → Serial (within society) — so society groups stay together
   const sorted = filteredData.slice().sort((a,b) => {
     const bA = g(a,'block'), bB = g(b,'block');
-    if (bA !== bB) return bA.localeCompare(bB,'ta');
+    if (bA !== bB) return cmpBlock(bA,bB);
     const sA = g(a,'society'), sB = g(b,'society');
     if (sA !== sB) return sA.localeCompare(sB,'ta');
     return (parseInt(g(a,'serial'))||0) - (parseInt(g(b,'serial'))||0);
@@ -3296,9 +3501,10 @@ function openExcelOptions() {
     {mode:'one', icon:'📄', title:'அனைத்தும் ஒரே sheet-ல்', sub:'உங்கள் block-ன் எல்லா கடைகளும் ஒரு தாளில்'},
     {mode:'society', icon:'📑', title:'நிறுவனம் வாரியாக (Society-wise)', sub:'ஒவ்வொரு கூட்டுறவு நிறுவனத்திற்கும் தனி sheet'}
   ] : [
-    {mode:'one', icon:'📄', title:'அனைத்தும் ஒரே sheet-ல்', sub:'மாவட்டத்தின் எல்லா கடைகளும் ஒரே தாளில்'},
-    {mode:'block', icon:'🏢', title:'ஒன்றியம் வாரியாக (21 Block sheets)', sub:'ஒவ்வொரு ஒன்றியத்திற்கும் தனி sheet'},
-    {mode:'society', icon:'📑', title:'நிறுவனம் வாரியாக (Society-wise sheets)', sub:'ஒவ்வொரு கூட்டுறவு நிறுவனத்திற்கும் தனி sheet'}
+    {mode:'one', icon:'📄', title:'அனைத்தும் ஒரே sheet-ல்', sub:'மாவட்டத்தின் எல்லா கடைகளும் ஒரே தாளில் (Abstract: block-வாரியாக)'},
+    {mode:'taluk', icon:'📍', title:'வட்டம் வாரியாக (Taluk sheets)', sub:'ஒவ்வொரு வட்டத்திற்கும் தனி sheet (Abstract: taluk-வாரியாக)'},
+    {mode:'block', icon:'🏢', title:'ஒன்றியம் வாரியாக (21 Block sheets)', sub:'ஒவ்வொரு ஒன்றியத்திற்கும் தனி sheet (Abstract: block-வாரியாக)'},
+    {mode:'society', icon:'📑', title:'நிறுவனம் வாரியாக (Society-wise sheets)', sub:'ஒவ்வொரு கூட்டுறவு நிறுவனத்திற்கும் தனி sheet (Abstract: society-வாரியாக)'}
   ];
 
   const box = document.getElementById('excel-options');
@@ -3320,33 +3526,97 @@ function confirmExcelExport() {
   runExcelExport(mode, withAbstract);
 }
 
-// Build the styled abstract (index) sheet from grouped data
-function buildAbstractSheet(blockMap) {
-  const idxRows = [[
-    'வ.எண்','Block','Society','மொத்த கடைகள்','முழுநேரம்','பகுதிநேரம்',
-    'PoS உள்ளவை','PoS இல்லாதவை','நகர்புறம்','கிராமபுறம்','மொத்த அட்டைகள்'
-  ]];
-  let s=1, gT=0,gF=0,gP=0,gPY=0,gPN=0,gU=0,gR=0,gC=0;
-  Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
-    Object.keys(blockMap[blk]).sort((a,b)=>a.localeCompare(b,'ta')).forEach(soc=>{
-      const rows=blockMap[blk][soc];
-      const full=rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
-      const part=rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length;
-      const posY=rows.filter(r=>g(r,'pos')==='உள்ளது').length;
-      const posN=rows.filter(r=>g(r,'pos')==='இல்லை').length;
-      const urban=rows.filter(r=>g(r,'area')==='நகர்புறம்').length;
-      const rural=rows.filter(r=>g(r,'area')==='கிராமபுறம்').length;
-      const cards=rows.reduce((x,r)=>x+(parseInt(g(r,'cards'))||0),0);
-      idxRows.push([s++,blk,soc,rows.length,full,part,posY,posN,urban,rural,cards]);
-      gT+=rows.length;gF+=full;gP+=part;gPY+=posY;gPN+=posN;gU+=urban;gR+=rural;gC+=cards;
-    });
-  });
-  idxRows.push(['','மொத்தம்','',gT,gF,gP,gPY,gPN,gU,gR,gC]);
-  const ws=XLSX.utils.aoa_to_sheet(idxRows);
-  ws['!cols']=[{wch:6},{wch:20},{wch:22},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:14}];
-  for(let c=0;c<11;c++){const cell=ws[XLSX.utils.encode_cell({r:0,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1565C0'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
+// Build a stats object for a group of rows
+function _absStats(rows){
+  return {
+    shops: rows.length,
+    full: rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length,
+    part: rows.filter(r=>g(r,'timetype')==='பகுதிநேரம்').length,
+    posY: rows.filter(r=>g(r,'pos')==='உள்ளது').length,
+    posN: rows.filter(r=>g(r,'pos')==='இல்லை').length,
+    urban: rows.filter(r=>g(r,'area')==='நகர்புறம்').length,
+    rural: rows.filter(r=>g(r,'area')==='கிராமபுறம்').length,
+    cards: rows.reduce((x,r)=>x+(parseInt(g(r,'cards'))||0),0),
+    socs: new Set(rows.map(r=>g(r,'society')).filter(Boolean)).size
+  };
+}
+
+// Build the styled abstract (index) sheet — grouping depends on export mode.
+// mode 'taluk' → one row per taluk; 'block' → per block; 'society'/'one' → per society.
+function buildAbstractSheet(src, mode) {
+  // Decide grouping level for the abstract
+  let groupLevel = 'society';
+  if (mode === 'taluk') groupLevel = 'taluk';
+  else if (mode === 'block') groupLevel = 'block';
+  else if (mode === 'one') groupLevel = 'block';   // flat export → block-level abstract is most useful
+  else groupLevel = 'society';
+
+  let header, colWidths, makeRows;
+
+  if (groupLevel === 'taluk') {
+    header = ['வ.எண்','வட்டம் (Taluk)','ஒன்றியங்கள்','நிறுவனங்கள்','மொத்த கடைகள்','முழுநேரம்','பகுதிநேரம்','PoS உள்ளவை','PoS இல்லாதவை','நகர்புறம்','கிராமபுறம்','மொத்த அட்டைகள்'];
+    colWidths = [{wch:6},{wch:22},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:14}];
+    makeRows = () => {
+      const taluks = [...new Set(src.map(r=>g(r,'taluk')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+      const rows=[]; let s=1; const tot={blocks:0,socs:0,shops:0,full:0,part:0,posY:0,posN:0,urban:0,rural:0,cards:0};
+      taluks.forEach(tk=>{
+        const tr = src.filter(r=>g(r,'taluk')===tk);
+        const st = _absStats(tr);
+        const blocks = new Set(tr.map(r=>g(r,'block')).filter(Boolean)).size;
+        rows.push([s++, fmtTaluk(tk), blocks, st.socs, st.shops, st.full, st.part, st.posY, st.posN, st.urban, st.rural, st.cards]);
+        tot.blocks+=blocks; tot.socs+=st.socs; tot.shops+=st.shops; tot.full+=st.full; tot.part+=st.part;
+        tot.posY+=st.posY; tot.posN+=st.posN; tot.urban+=st.urban; tot.rural+=st.rural; tot.cards+=st.cards;
+      });
+      rows.push(['','மொத்தம்',tot.blocks,tot.socs,tot.shops,tot.full,tot.part,tot.posY,tot.posN,tot.urban,tot.rural,tot.cards]);
+      return rows;
+    };
+  }
+  else if (groupLevel === 'block') {
+    header = ['வ.எண்','ஒன்றியம் (Block)','வட்டம்','நிறுவனங்கள்','மொத்த கடைகள்','முழுநேரம்','பகுதிநேரம்','PoS உள்ளவை','PoS இல்லாதவை','நகர்புறம்','கிராமபுறம்','மொத்த அட்டைகள்'];
+    colWidths = [{wch:6},{wch:20},{wch:18},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:14}];
+    makeRows = () => {
+      const blocks = [...new Set(src.map(r=>g(r,'block')).filter(Boolean))].sort(cmpBlock);
+      const rows=[]; let s=1; const tot={socs:0,shops:0,full:0,part:0,posY:0,posN:0,urban:0,rural:0,cards:0};
+      blocks.forEach(blk=>{
+        const br = src.filter(r=>g(r,'block')===blk);
+        const st = _absStats(br);
+        const taluk = br[0] ? fmtTaluk(g(br[0],'taluk')) : '';
+        rows.push([s++, blk, taluk, st.socs, st.shops, st.full, st.part, st.posY, st.posN, st.urban, st.rural, st.cards]);
+        tot.socs+=st.socs; tot.shops+=st.shops; tot.full+=st.full; tot.part+=st.part;
+        tot.posY+=st.posY; tot.posN+=st.posN; tot.urban+=st.urban; tot.rural+=st.rural; tot.cards+=st.cards;
+      });
+      rows.push(['','மொத்தம்','',tot.socs,tot.shops,tot.full,tot.part,tot.posY,tot.posN,tot.urban,tot.rural,tot.cards]);
+      return rows;
+    };
+  }
+  else { // society-level
+    header = ['வ.எண்','Block','Society','மொத்த கடைகள்','முழுநேரம்','பகுதிநேரம்','PoS உள்ளவை','PoS இல்லாதவை','நகர்புறம்','கிராமபுறம்','மொத்த அட்டைகள்'];
+    colWidths = [{wch:6},{wch:20},{wch:22},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:14}];
+    makeRows = () => {
+      const blocks = [...new Set(src.map(r=>g(r,'block')).filter(Boolean))].sort(cmpBlock);
+      const rows=[]; let s=1; const tot={shops:0,full:0,part:0,posY:0,posN:0,urban:0,rural:0,cards:0};
+      blocks.forEach(blk=>{
+        const socs = [...new Set(src.filter(r=>g(r,'block')===blk).map(r=>g(r,'society')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+        socs.forEach(soc=>{
+          const sr = src.filter(r=>g(r,'block')===blk && g(r,'society')===soc);
+          const st = _absStats(sr);
+          rows.push([s++, blk, soc, st.shops, st.full, st.part, st.posY, st.posN, st.urban, st.rural, st.cards]);
+          tot.shops+=st.shops; tot.full+=st.full; tot.part+=st.part; tot.posY+=st.posY;
+          tot.posN+=st.posN; tot.urban+=st.urban; tot.rural+=st.rural; tot.cards+=st.cards;
+        });
+      });
+      rows.push(['','மொத்தம்','',tot.shops,tot.full,tot.part,tot.posY,tot.posN,tot.urban,tot.rural,tot.cards]);
+      return rows;
+    };
+  }
+
+  const idxRows = [header, ...makeRows()];
+  const ncol = header.length;
+  const ws = XLSX.utils.aoa_to_sheet(idxRows);
+  ws['!cols'] = colWidths;
+  for(let c=0;c<ncol;c++){const cell=ws[XLSX.utils.encode_cell({r:0,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1565C0'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
   const lr=idxRows.length-1;
-  for(let c=0;c<11;c++){const cell=ws[XLSX.utils.encode_cell({r:lr,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1A237E'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
+  for(let c=0;c<ncol;c++){const cell=ws[XLSX.utils.encode_cell({r:lr,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1A237E'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
   ws['!freeze']={xSplit:0,ySplit:1};
   return ws;
 }
@@ -3356,7 +3626,7 @@ function buildDataSheet(rows, titleText, signLeft, signRight) {
   const colKeys = EXPORT_COLS_DEF.map(([k])=>k);
   const colLabels = EXPORT_COLS_DEF.map(([,l])=>l);
   const sorted = rows.slice().sort((a,b)=>{
-    const bc=g(a,'block').localeCompare(g(b,'block'),'ta'); if(bc)return bc;
+    const bc=cmpBlock(g(a,'block'),g(b,'block')); if(bc)return bc;
     const sc=g(a,'society').localeCompare(g(b,'society'),'ta'); if(sc)return sc;
     return (parseInt(g(a,'serial'))||0)-(parseInt(g(b,'serial'))||0);
   });
@@ -3389,7 +3659,7 @@ function runExcelExport(mode, withAbstract) {
   });
 
   const wb = XLSX.utils.book_new();
-  if (withAbstract) XLSX.utils.book_append_sheet(wb, buildAbstractSheet(blockMap), 'Abstract');
+  if (withAbstract) XLSX.utils.book_append_sheet(wb, buildAbstractSheet(src, mode), 'Abstract');
 
   const usedNames = [];
   const uniqName = (raw, serial) => {
@@ -3403,7 +3673,7 @@ function runExcelExport(mode, withAbstract) {
   if (mode === 'one') {
     // Single flat sheet of all shops
     const allRows = [];
-    Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
+    Object.keys(blockMap).sort(cmpBlock).forEach(blk=>{
       Object.keys(blockMap[blk]).sort((a,b)=>a.localeCompare(b,'ta')).forEach(soc=>{
         allRows.push(...blockMap[blk][soc]);
       });
@@ -3411,9 +3681,18 @@ function runExcelExport(mode, withAbstract) {
     const ws = buildDataSheet(allRows, 'அனைத்து கடைகள் — ' + (currentUser?.role==='editor'?currentUser.block:'திருவண்ணாமலை மாவட்டம்'), '', '');
     XLSX.utils.book_append_sheet(wb, ws, 'All Shops');
   }
+  else if (mode === 'taluk') {
+    let serial=1;
+    const taluks = [...new Set(src.map(r=>g(r,'taluk')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+    taluks.forEach(tk=>{
+      const rows = src.filter(r=>g(r,'taluk')===tk);
+      const ws = buildDataSheet(rows, fmtTaluk(tk) + ' — ' + rows.length + ' கடைகள்', fmtTaluk(tk), '');
+      XLSX.utils.book_append_sheet(wb, ws, uniqName(fmtTaluk(tk), serial++));
+    });
+  }
   else if (mode === 'block') {
     let serial=1;
-    Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
+    Object.keys(blockMap).sort(cmpBlock).forEach(blk=>{
       const rows=[]; Object.values(blockMap[blk]).forEach(arr=>rows.push(...arr));
       const ws = buildDataSheet(rows, blk + ' — ' + rows.length + ' கடைகள்', blk, '');
       XLSX.utils.book_append_sheet(wb, ws, uniqName(blk, serial++));
@@ -3421,7 +3700,7 @@ function runExcelExport(mode, withAbstract) {
   }
   else { // society
     let serial=1;
-    Object.keys(blockMap).sort((a,b)=>a.localeCompare(b,'ta')).forEach(blk=>{
+    Object.keys(blockMap).sort(cmpBlock).forEach(blk=>{
       Object.keys(blockMap[blk]).sort((a,b)=>a.localeCompare(b,'ta')).forEach(soc=>{
         const rows=blockMap[blk][soc];
         const ws = buildDataSheet(rows, blk+' → '+soc, soc, blk);
@@ -3430,7 +3709,7 @@ function runExcelExport(mode, withAbstract) {
     });
   }
 
-  const modeTag = mode==='one'?'AllInOne': mode==='block'?'BlockWise':'SocietyWise';
+  const modeTag = mode==='one'?'AllInOne': mode==='taluk'?'TalukWise': mode==='block'?'BlockWise':'SocietyWise';
   XLSX.writeFile(wb, 'FPS_'+scopeName+modeTag+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
@@ -4335,22 +4614,45 @@ function exportEkycPdf() {
   w.document.close();
 }
 
-// ── PIVOT ANALYSER ─────────────────────────────────────────
-// Categorical fields usable as Row/Column dimensions
-const PIVOT_DIM_FIELDS = [
-  ['taluk','வட்டம்'],['block','ஒன்றியம்'],['society','கூட்டுறவு நிறுவனம்'],
-  ['agency','Agency Group'],['area','நகர்புறம் / கிராமபுறம்'],
-  ['timetype','முழுநேரம் / பகுதிநேரம்'],['pos','PoS இயந்திரம்'],
-  ['building','கட்டிட வகை'],['godown','கிடங்கு'],
-  ['mla','சட்டமன்ற தொகுதி'],['mp','பாராளுமன்ற தொகுதி']
+// ── PIVOT ANALYSER (Excel-style drag & drop) ───────────────
+// All assignable fields. type 'dim' = categorical, 'num' = numeric (sum/avg/etc).
+const PIVOT_FIELDS = [
+  {key:'__count', label:'கடைகள் எண்ணிக்கை', type:'num', countOnly:true},
+  {key:'taluk', label:'வட்டம்', type:'dim'},
+  {key:'block', label:'ஒன்றியம்', type:'dim'},
+  {key:'society', label:'கூட்டுறவு நிறுவனம்', type:'dim'},
+  {key:'agency', label:'Agency Group', type:'dim'},
+  {key:'area', label:'நகர்/கிராமம்', type:'dim'},
+  {key:'timetype', label:'முழு/பகுதி நேரம்', type:'dim'},
+  {key:'pos', label:'PoS இயந்திரம்', type:'dim'},
+  {key:'building', label:'கட்டிட வகை', type:'dim'},
+  {key:'godown', label:'கிடங்கு', type:'dim'},
+  {key:'mla', label:'சட்டமன்ற தொகுதி', type:'dim'},
+  {key:'mp', label:'பாராளுமன்ற தொகுதி', type:'dim'},
+  {key:'cards', label:'குடும்ப அட்டைகள்', type:'num'},
+  {key:'opendays', label:'திறந்த நாட்கள் (எண்)', type:'num'}
 ];
-// Value fields — "shops" = count of records; numeric fields allow sum/avg
-const PIVOT_VAL_FIELDS = [
-  ['__count','கடைகள் எண்ணிக்கை (Shops)'],
-  ['cards','குடும்ப அட்டைகள்'],
-  ['opendays','திறந்த நாட்கள் (எண்)']
-];
+function pvField(k){ return PIVOT_FIELDS.find(f=>f.key===k); }
+
+// Pivot state: each zone holds field keys. values holds {key, agg}.
+let pivotState = { filters:[], cols:[], rows:[], values:[] };
 let pivotInited = false;
+let pvDragKey = null;       // key being dragged
+let pvAssignKey = null;     // key awaiting tap-assign
+let pvColOrder = [];        // manual column-value order (when Column sort = manual)
+function pvResetColOrder(){ pvColOrder = []; }
+// Move a column value left/right in manual order
+function pvMoveCol(idx, dir){
+  // Ensure we're in manual mode
+  const sel = document.getElementById('pv-colsort');
+  if (sel && sel.value !== 'manual'){ sel.value='manual'; }
+  const arr = pvColOrder.slice();
+  const j = idx + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[idx], arr[j]] = [arr[j], arr[idx]];
+  pvColOrder = arr;
+  renderPivot();
+}
 
 function pivotData() {
   return currentUser?.role==='editor'
@@ -4360,27 +4662,198 @@ function pivotData() {
 
 function initPivotControls() {
   if (pivotInited) return;
-  const rowSel = document.getElementById('pv-row');
-  const colSel = document.getElementById('pv-col');
-  const valSel = document.getElementById('pv-val');
-  if (!rowSel || !colSel || !valSel) return;
-  rowSel.innerHTML = PIVOT_DIM_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
-  colSel.innerHTML = `<option value="">— எதுவுமில்லை (none) —</option>` +
-    PIVOT_DIM_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
-  valSel.innerHTML = PIVOT_VAL_FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
-  // Sensible defaults: rows = block, cols = timetype, value = count
-  rowSel.value = 'block';
-  colSel.value = 'timetype';
-  valSel.value = '__count';
+  // Sensible default like Excel: Rows=block, Cols=timetype, Values=count
+  pivotState = { filters:[], cols:['timetype'], rows:['block'], values:[{key:'__count', agg:'count'}] };
   pivotInited = true;
 }
 
 function resetPivot() {
   pivotInited = false;
+  pvFilterSelections = {};
   initPivotControls();
-  document.getElementById('pv-agg').value = 'count';
-  document.getElementById('pv-totals').checked = true;
-  document.getElementById('pv-heat').checked = true;
+  const t=document.getElementById('pv-totals'); if(t)t.checked=true;
+  const h=document.getElementById('pv-heat'); if(h)h.checked=true;
+  renderPivotPanel();
+  renderPivot();
+}
+
+// ── Field list + zones rendering ──
+function renderPivotPanel() {
+  initPivotControls();
+  const list = document.getElementById('pv-field-list');
+  if (!list) return;
+  // Which keys are already used somewhere
+  const used = new Set([...pivotState.filters, ...pivotState.cols, ...pivotState.rows, ...pivotState.values.map(v=>v.key)]);
+  list.innerHTML = PIVOT_FIELDS.map(f=>{
+    const typeClass = f.type==='num' ? 'pv-type-num' : 'pv-type-dim';
+    const typeLabel = f.type==='num' ? 'Σ' : 'Abc';
+    const dim = used.has(f.key) ? 'opacity:.45' : '';
+    return `<div class="pv-field" draggable="true" data-key="${f.key}" style="${dim}"
+        ondragstart="pvDragStart(event,'${f.key}')" ondragend="pvDragEnd(event)"
+        onclick="pvTapField('${f.key}')">
+      <span class="pv-grip">⠿</span>
+      <span>${f.label}</span>
+      <span class="pv-type ${typeClass}">${typeLabel}</span>
+    </div>`;
+  }).join('');
+
+  renderPivotZone('filters'); renderPivotZone('cols');
+  renderPivotZone('rows');    renderPivotZone('values');
+}
+
+function renderPivotZone(zone) {
+  const el = document.getElementById('pv-zone-'+zone);
+  if (!el) return;
+  const aggOpts = (sel) => ['count','sum','avg','min','max'].map(a=>
+    `<option value="${a}" ${a===sel?'selected':''}>${ {count:'Count',sum:'Sum',avg:'Avg',min:'Min',max:'Max'}[a] }</option>`).join('');
+
+  if (zone === 'values') {
+    if (!pivotState.values.length) { el.innerHTML = `<span class="pv-chip-empty">இங்கே இழுக்கவும் / tap</span>`; return; }
+    el.innerHTML = pivotState.values.map((v,i)=>{
+      const f = pvField(v.key);
+      const aggCtl = f.countOnly ? `<span style="font-size:10px;color:var(--muted)">Count</span>`
+        : `<select class="pv-agg-sel" onchange="pvSetAgg(${i},this.value)" onclick="event.stopPropagation()">${aggOpts(v.agg)}</select>`;
+      return `<span class="pv-chip num" draggable="true" ondragstart="pvDragStart(event,'${v.key}')">
+        ${f.label} ${aggCtl}
+        <span class="pv-x" onclick="event.stopPropagation();pvRemove('values','${v.key}')">×</span>
+      </span>`;
+    }).join('');
+    return;
+  }
+
+  const arr = pivotState[zone];
+  if (!arr.length) { el.innerHTML = `<span class="pv-chip-empty">இங்கே இழுக்கவும் / tap</span>`; return; }
+
+  // Filters zone: chip + a "choose values" dropdown (multi-select via a button → modal-less inline)
+  if (zone === 'filters') {
+    el.innerHTML = arr.map(k=>{
+      const f = pvField(k);
+      const sel = pvFilterSelections[k];
+      const selCount = sel && sel.size ? sel.size : 0;
+      const label = selCount ? `${f.label} (${selCount})` : `${f.label}: எல்லாம்`;
+      return `<span class="pv-chip" style="border-color:var(--amber)">
+        <span style="cursor:pointer" onclick="pvOpenFilterValues('${k}')">${label}</span>
+        <span class="pv-x" onclick="event.stopPropagation();pvRemove('filters','${k}')">×</span>
+      </span>`;
+    }).join('');
+    return;
+  }
+
+  el.innerHTML = arr.map(k=>{
+    const f = pvField(k);
+    const cls = f.type==='num' ? 'pv-chip num' : 'pv-chip';
+    return `<span class="${cls}" draggable="true" ondragstart="pvDragStart(event,'${k}')">
+      ${f.label}
+      <span class="pv-x" onclick="event.stopPropagation();pvRemove('${zone}','${k}')">×</span>
+    </span>`;
+  }).join('');
+}
+
+// Open a checkbox list to choose which values of a filter field to keep
+function pvOpenFilterValues(key){
+  const f = pvField(key);
+  const data = pivotData();
+  const vals = [...new Set(data.map(r=>g(r,key)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+  const cur = pvFilterSelections[key] || new Set(vals); // default: all
+  document.getElementById('pv-assign-title').textContent = f.label + ' — மதிப்புகளைத் தேர்வு செய்';
+  const fmtV = v => key==='taluk' ? fmtTaluk(v) : v;
+  document.getElementById('pv-assign-options').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-outline" style="font-size:11px;flex:1" onclick="pvFilterAll('${key}',true)">✓ எல்லாம்</button>
+      <button class="btn btn-outline" style="font-size:11px;flex:1" onclick="pvFilterAll('${key}',false)">✕ ஒன்றுமில்லை</button>
+    </div>
+    <div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
+      ${vals.map(v=>`<label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 8px;background:var(--bg3);border-radius:6px;cursor:pointer">
+        <input type="checkbox" class="pv-fval" value="${String(v).replace(/"/g,'&quot;')}" ${cur.has(v)?'checked':''} style="accent-color:var(--amber)"
+          onchange="pvApplyFilterValues('${key}')">
+        <span>${fmtV(v)}</span>
+      </label>`).join('')}
+    </div>`;
+  document.getElementById('pv-assign-modal').classList.add('open');
+}
+function pvFilterAll(key, state){
+  document.querySelectorAll('#pv-assign-options .pv-fval').forEach(cb=>cb.checked=state);
+  pvApplyFilterValues(key);
+}
+function pvApplyFilterValues(key){
+  const chosen = [...document.querySelectorAll('#pv-assign-options .pv-fval:checked')].map(cb=>cb.value);
+  pvFilterSelections[key] = new Set(chosen);
+  renderPivotZone('filters');
+  renderPivot();
+}
+
+// ── Drag & drop handlers ──
+function pvDragStart(e, key){ pvDragKey = key; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',key);}catch(_){}}
+function pvDragEnd(e){ pvDragKey=null; document.querySelectorAll('.pv-zone.over').forEach(z=>z.classList.remove('over')); }
+function pvDragOver(e){ e.preventDefault(); e.currentTarget.classList.add('over'); }
+function pvDragLeave(e){ e.currentTarget.classList.remove('over'); }
+function pvDrop(e, zone){
+  e.preventDefault();
+  e.currentTarget.classList.remove('over');
+  const key = pvDragKey || (e.dataTransfer && e.dataTransfer.getData('text/plain'));
+  if (key) pvAssign(key, zone);
+  pvDragKey = null;
+}
+
+// ── Tap-to-assign (mobile fallback) ──
+function pvTapField(key){
+  // If field already used, ignore tap (use the × to remove)
+  const used = new Set([...pivotState.filters, ...pivotState.cols, ...pivotState.rows, ...pivotState.values.map(v=>v.key)]);
+  if (used.has(key)) return;
+  pvAssignKey = key;
+  const f = pvField(key);
+  document.getElementById('pv-assign-title').textContent = f.label + ' — எங்கே சேர்க்க?';
+  const zones = [
+    {z:'filters', label:'▼ Filters (வடிகட்டி)'},
+    {z:'cols', label:'▥ Columns (நெடுவரிசை)'},
+    {z:'rows', label:'▤ Rows (வரிசை)'},
+    {z:'values', label:'Σ Values (மதிப்பு)'}
+  ];
+  document.getElementById('pv-assign-options').innerHTML = zones.map(o=>
+    `<button class="btn btn-outline" style="justify-content:flex-start;text-align:left;padding:10px 12px;font-size:13px"
+       onclick="pvAssign('${key}','${o.z}');document.getElementById('pv-assign-modal').classList.remove('open')">${o.label}</button>`
+  ).join('');
+  document.getElementById('pv-assign-modal').classList.add('open');
+}
+
+// Assign a field to a zone (removes from any other zone first)
+function pvAssign(key, zone){
+  const f = pvField(key);
+  if (!f) return;
+  // Values zone only accepts num-type (or count); dims go elsewhere
+  if (zone === 'values' && f.type !== 'num') {
+    showToast('இந்த field-ஐ Values-ல் சேர்க்க முடியாது (எண் அல்ல)', 'amber'); return;
+  }
+  if (zone !== 'values' && f.type === 'num' && f.key !== '__count') {
+    // numeric in a dimension zone — allowed (treated as category) but warn
+  }
+  // remove from all zones
+  pvRemoveAll(key);
+  if (zone === 'values') {
+    pivotState.values.push({key, agg: f.countOnly ? 'count' : 'sum'});
+  } else {
+    pivotState[zone].push(key);
+  }
+  renderPivotPanel();
+  renderPivot();
+}
+
+function pvRemoveAll(key){
+  pivotState.filters = pivotState.filters.filter(k=>k!==key);
+  pivotState.cols    = pivotState.cols.filter(k=>k!==key);
+  pivotState.rows    = pivotState.rows.filter(k=>k!==key);
+  pivotState.values  = pivotState.values.filter(v=>v.key!==key);
+  delete pvFilterSelections[key];
+}
+function pvRemove(zone, key){
+  if (zone==='values') pivotState.values = pivotState.values.filter(v=>v.key!==key);
+  else pivotState[zone] = pivotState[zone].filter(k=>k!==key);
+  if (zone==='filters') delete pvFilterSelections[key];
+  renderPivotPanel();
+  renderPivot();
+}
+function pvSetAgg(idx, agg){
+  if (pivotState.values[idx]) pivotState.values[idx].agg = agg;
   renderPivot();
 }
 
@@ -4395,137 +4868,244 @@ function pivotAggregate(values, agg) {
   return nums.length;
 }
 
-// Build the pivot matrix object — shared by render + export
+// Compound key joiner for multi-field row/column groupings
+const PV_SEP = ' ▸ ';
+function pvGroupKey(r, fieldKeys){
+  return fieldKeys.map(k => g(r,k) || '—').join(PV_SEP);
+}
+function pvLabelParts(compound){ return compound.split(PV_SEP); }
+
+// Build pivot model from state
 function buildPivot() {
   initPivotControls();
-  const rowKey = document.getElementById('pv-row').value;
-  const colKey = document.getElementById('pv-col').value;     // '' = none
-  const valKey = document.getElementById('pv-val').value;
-  let agg = document.getElementById('pv-agg').value;
-  // If value = count, aggregation is forced to count
-  if (valKey === '__count') agg = 'count';
+  const rowKeys = pivotState.rows.slice();
+  const colKeys = pivotState.cols.slice();
+  const values  = pivotState.values.length ? pivotState.values.slice() : [{key:'__count', agg:'count'}];
 
-  const data = pivotData();
-  const rowVals = [...new Set(data.map(r=>g(r,rowKey)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
-  const colVals = colKey ? [...new Set(data.map(r=>g(r,colKey)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta')) : ['__all'];
-
-  // cell[r][c] = array of raw values (for count it's just the rows)
-  const cell = {};
-  rowVals.forEach(rv => { cell[rv] = {}; colVals.forEach(cv => cell[rv][cv] = []); });
-
-  data.forEach(r => {
-    const rv = g(r,rowKey);
-    if (!rv || !(rv in cell)) return;
-    const cv = colKey ? g(r,colKey) : '__all';
-    if (!cv || !(cv in cell[rv])) return;
-    if (valKey === '__count') cell[rv][cv].push(1);
-    else cell[rv][cv].push(g(r,valKey));
+  let data = pivotData();
+  // Apply filters: only include rows that have a non-empty value for each filter field.
+  // (A simple "group exists" filter — each filter field also shown as a slicer note.)
+  const activeFilters = {};
+  pivotState.filters.forEach(fk=>{
+    activeFilters[fk] = pvFilterSelections[fk] || null;  // null = all
+  });
+  data = data.filter(r=>{
+    for (const fk of pivotState.filters){
+      const sel = activeFilters[fk];
+      if (sel && sel.size && !sel.has(g(r,fk))) return false;
+    }
+    return true;
   });
 
-  // Compute matrix of aggregated numbers
-  const matrix = {};
-  let maxCell = 0;
-  rowVals.forEach(rv => {
-    matrix[rv] = {};
-    colVals.forEach(cv => {
-      const v = pivotAggregate(cell[rv][cv], agg);
-      matrix[rv][cv] = v;
-      if (v > maxCell) maxCell = v;
+  // ── Sorting helpers ──
+  // A compound value like "block ▸ timetype" — compare by each part, using
+  // official block order when that part's field is 'block'.
+  const cmpCompound = (keys) => (A,B) => {
+    const pa = A.split(PV_SEP), pb = B.split(PV_SEP);
+    for (let i=0;i<keys.length;i++){
+      const k = keys[i];
+      const c = k==='block' ? cmpBlock(pa[i]||'', pb[i]||'') : (pa[i]||'').localeCompare(pb[i]||'','ta');
+      if (c) return c;
+    }
+    return 0;
+  };
+
+  const rowSort = (document.getElementById('pv-rowsort')||{}).value || 'label';
+  const colSort = (document.getElementById('pv-colsort')||{}).value || 'label';
+
+  let rowVals = rowKeys.length
+    ? [...new Set(data.map(r=>pvGroupKey(r,rowKeys)).filter(Boolean))]
+    : ['__all'];
+  let colVals = colKeys.length
+    ? [...new Set(data.map(r=>pvGroupKey(r,colKeys)).filter(Boolean))]
+    : ['__all'];
+
+  // Column ordering
+  if (colKeys.length){
+    if (colSort === 'official') colVals.sort((a,b)=>cmpBlock(a.split(PV_SEP)[0], b.split(PV_SEP)[0]) || cmpCompound(colKeys)(a,b));
+    else if (colSort === 'manual'){
+      // Keep any saved manual order; append new values at the end
+      const saved = pvColOrder.filter(v=>colVals.includes(v));
+      const extras = colVals.filter(v=>!saved.includes(v)).sort(cmpCompound(colKeys));
+      colVals = [...saved, ...extras];
+      pvColOrder = colVals.slice();
+    } else colVals.sort(cmpCompound(colKeys));
+  }
+
+  // cell[r][c] = array of records
+  const cell = {};
+  rowVals.forEach(rv=>{ cell[rv]={}; colVals.forEach(cv=>cell[rv][cv]=[]); });
+  data.forEach(r=>{
+    const rv = rowKeys.length ? pvGroupKey(r,rowKeys) : '__all';
+    const cv = colKeys.length ? pvGroupKey(r,colKeys) : '__all';
+    if (cell[rv] && cell[rv][cv]) cell[rv][cv].push(r);
+  });
+
+  // For each value field, compute matrix. matrix[rv][cv] = array (one per value field)
+  const matrix = {}; let maxCell = 0;
+  rowVals.forEach(rv=>{
+    matrix[rv]={};
+    colVals.forEach(cv=>{
+      const recs = cell[rv][cv];
+      matrix[rv][cv] = values.map(v=>{
+        const vals = v.key==='__count' ? recs : recs.map(r=>g(r,v.key));
+        const out = pivotAggregate(vals, v.agg);
+        if (out>maxCell) maxCell=out;
+        return out;
+      });
     });
   });
 
-  return { rowKey, colKey, valKey, agg, rowVals, colVals, matrix, maxCell, data };
+  // Row ordering (label / official / value high-low / value low-high)
+  if (rowKeys.length){
+    const rowGrand = rv => colVals.reduce((s,cv)=> s + matrix[rv][cv].reduce((a,b)=>a+b,0), 0);
+    if (rowSort === 'official') rowVals.sort((a,b)=>cmpBlock(a.split(PV_SEP)[0], b.split(PV_SEP)[0]) || cmpCompound(rowKeys)(a,b));
+    else if (rowSort === 'high') rowVals.sort((a,b)=>rowGrand(b)-rowGrand(a));
+    else if (rowSort === 'low')  rowVals.sort((a,b)=>rowGrand(a)-rowGrand(b));
+    else rowVals.sort(cmpCompound(rowKeys));
+  }
+
+  return { rowKeys, colKeys, values, rowVals, colVals, matrix, maxCell, data };
 }
+
+// Track filter selections (field -> Set of chosen values)
+let pvFilterSelections = {};
 
 function renderPivot() {
   const wrap = document.getElementById('pivot-table-wrap');
   if (!wrap) return;
   const p = buildPivot();
-  const showTotals = document.getElementById('pv-totals').checked;
-  const heat = document.getElementById('pv-heat').checked;
+  const showTotals = document.getElementById('pv-totals')?.checked;
+  const heat = document.getElementById('pv-heat')?.checked;
 
-  const dimLabel = k => (PIVOT_DIM_FIELDS.find(f=>f[0]===k)||[,k])[1];
-  const valLabel = (PIVOT_VAL_FIELDS.find(f=>f[0]===p.valKey)||[,p.valKey])[1];
-  const aggLabel = {count:'Count',sum:'Sum',avg:'Average',min:'Min',max:'Max'}[p.agg];
+  const dl = k => (pvField(k)||{label:k}).label;
+  const aggLabel = {count:'Count',sum:'Sum',avg:'Avg',min:'Min',max:'Max'};
+  const nv = p.values.length;
 
-  document.getElementById('pivot-title').textContent =
-    `${aggLabel} of ${valLabel}  —  Rows: ${dimLabel(p.rowKey)}` + (p.colKey?`  ×  Columns: ${dimLabel(p.colKey)}`:'');
+  // Title
+  const valDesc = p.values.map(v=> v.key==='__count' ? 'Count of கடைகள்' : aggLabel[v.agg]+' of '+dl(v.key)).join(', ');
+  const rowDesc = p.rowKeys.length ? p.rowKeys.map(dl).join(' ▸ ') : '(மொத்தம்)';
+  const colDesc = p.colKeys.length ? '  ×  Cols: '+p.colKeys.map(dl).join(' ▸ ') : '';
+  document.getElementById('pivot-title').textContent = `${valDesc}  —  Rows: ${rowDesc}${colDesc}`;
 
-  // Format taluk values nicely
-  const fmtV = (k,v)=> k==='taluk' ? fmtTaluk(v) : v;
+  const fmtCompound = (keys, compound) => {
+    if (compound === '__all') return 'மொத்தம்';
+    if (!keys.length) return compound;
+    const parts = pvLabelParts(compound);
+    return keys.map((k,i)=> k==='taluk' ? fmtTaluk(parts[i]||'') : (parts[i]||'')).join(' ▸ ');
+  };
 
-  // Build column totals + grand total
-  const colTotals = {}; let grand = 0;
-  p.colVals.forEach(cv => { colTotals[cv] = 0; });
-  const rowTotals = {};
-  p.rowVals.forEach(rv => {
-    let rt = 0;
-    p.colVals.forEach(cv => { rt += p.matrix[rv][cv]; colTotals[cv] += p.matrix[rv][cv]; });
-    rowTotals[rv] = rt; grand += rt;
+  // Totals
+  const colTotals = {}; p.colVals.forEach(cv=> colTotals[cv]=p.values.map(()=>0));
+  const rowTotals = {}; let grand = p.values.map(()=>0);
+  p.rowVals.forEach(rv=>{
+    rowTotals[rv]=p.values.map(()=>0);
+    p.colVals.forEach(cv=>{
+      p.matrix[rv][cv].forEach((val,vi)=>{ rowTotals[rv][vi]+=val; colTotals[cv][vi]+=val; grand[vi]+=val; });
+    });
   });
 
   const heatBg = v => {
     if (!heat || !p.maxCell || !v) return '';
-    const t = v / p.maxCell;
-    // blue scale
-    const alpha = (0.08 + t*0.42).toFixed(2);
-    return `background:rgba(79,142,247,${alpha})`;
+    const t = v/p.maxCell;
+    return `background:rgba(79,142,247,${(0.08+t*0.42).toFixed(2)})`;
   };
 
-  const hasCols = !!p.colKey;
-  let html = `<table style="min-width:${Math.max(400,(p.colVals.length+2)*110)}px"><thead><tr>
-    <th style="position:sticky;left:0;background:var(--bg3);z-index:2">${dimLabel(p.rowKey)}</th>
-    ${hasCols ? p.colVals.map(cv=>`<th style="text-align:center">${fmtV(p.colKey,cv)}</th>`).join('') : `<th style="text-align:center">${valLabel}</th>`}
-    ${showTotals ? `<th style="text-align:center;color:var(--blue)">மொத்தம்</th>` : ''}
-  </tr></thead><tbody>`;
+  const hasCols = p.colKeys.length>0;
+  const cellOf = (arr) => arr.map(v=>v?v.toLocaleString():'<span style="color:var(--muted)">·</span>');
 
-  p.rowVals.forEach(rv => {
-    html += `<tr>
-      <td style="font-weight:600;position:sticky;left:0;background:var(--bg2);z-index:1">${fmtV(p.rowKey,rv)}</td>
-      ${p.colVals.map(cv=>{
-        const v = p.matrix[rv][cv];
-        return `<td class="td-mono" style="text-align:center;${heatBg(v)}">${v?v.toLocaleString():'<span style="color:var(--muted)">·</span>'}</td>`;
-      }).join('')}
-      ${showTotals ? `<td class="td-mono" style="text-align:center;font-weight:700;color:var(--blue)">${rowTotals[rv].toLocaleString()}</td>` : ''}
+  // Header. With multiple value fields + columns, show two header rows.
+  const colSortMode = (document.getElementById('pv-colsort')||{}).value || 'label';
+  const swapArrows = (ci) => {
+    if (!hasCols || colSortMode !== 'manual') return '';
+    const left = ci>0 ? `<span onclick="event.stopPropagation();pvMoveCol(${ci},-1)" style="cursor:pointer;color:var(--blue)" title="இடதுபுறம்">◀</span>` : '<span style="opacity:.2">◀</span>';
+    const right = ci<p.colVals.length-1 ? `<span onclick="event.stopPropagation();pvMoveCol(${ci},1)" style="cursor:pointer;color:var(--blue)" title="வலதுபுறம்">▶</span>` : '<span style="opacity:.2">▶</span>';
+    return `<div style="display:flex;gap:6px;justify-content:center;font-size:10px;margin-top:3px">${left}${right}</div>`;
+  };
+
+  let thead = '';
+  if (hasCols && nv>1){
+    thead = `<tr>
+      <th rowspan="2" style="position:sticky;left:0;background:var(--bg3);z-index:2">${p.rowKeys.map(dl).join(' ▸ ')||'—'}</th>
+      ${p.colVals.map((cv,ci)=>`<th colspan="${nv}" style="text-align:center">${fmtCompound(p.colKeys,cv)}${swapArrows(ci)}</th>`).join('')}
+      ${showTotals?`<th colspan="${nv}" style="text-align:center;color:var(--blue)">மொத்தம்</th>`:''}
+    </tr><tr>
+      ${p.colVals.map(()=>p.values.map(v=>`<th style="text-align:center;font-size:9px">${v.key==='__count'?'Count':aggLabel[v.agg]+' '+dl(v.key)}</th>`).join('')).join('')}
+      ${showTotals?p.values.map(v=>`<th style="text-align:center;font-size:9px;color:var(--blue)">${v.key==='__count'?'Count':aggLabel[v.agg]}</th>`).join(''):''}
     </tr>`;
-  });
-
-  if (showTotals) {
-    html += `<tr style="border-top:2px solid var(--blue)">
-      <td style="font-weight:700;color:var(--blue);position:sticky;left:0;background:var(--bg3);z-index:1">மொத்தம்</td>
-      ${p.colVals.map(cv=>`<td class="td-mono" style="text-align:center;font-weight:700;color:var(--blue)">${colTotals[cv].toLocaleString()}</td>`).join('')}
-      <td class="td-mono" style="text-align:center;font-weight:700;color:var(--green)">${grand.toLocaleString()}</td>
+  } else {
+    thead = `<tr>
+      <th style="position:sticky;left:0;background:var(--bg3);z-index:2">${p.rowKeys.map(dl).join(' ▸ ')||'—'}</th>
+      ${hasCols ? p.colVals.map((cv,ci)=>`<th style="text-align:center">${fmtCompound(p.colKeys,cv)}${swapArrows(ci)}</th>`).join('')
+                : `<th style="text-align:center">${p.values.map(v=>v.key==='__count'?'Count':aggLabel[v.agg]+' '+dl(v.key)).join(' / ')}</th>`}
+      ${showTotals?`<th style="text-align:center;color:var(--blue)">மொத்தம்</th>`:''}
     </tr>`;
   }
 
-  html += `</tbody></table>`;
-  wrap.innerHTML = html;
+  let body = '';
+  p.rowVals.forEach(rv=>{
+    body += `<tr><td style="font-weight:600;position:sticky;left:0;background:var(--bg2);z-index:1">${fmtCompound(p.rowKeys,rv)}</td>`;
+    p.colVals.forEach(cv=>{
+      p.matrix[rv][cv].forEach(val=>{
+        body += `<td class="td-mono" style="text-align:center;${heatBg(val)}">${val?val.toLocaleString():'<span style="color:var(--muted)">·</span>'}</td>`;
+      });
+    });
+    if (showTotals) rowTotals[rv].forEach(val=> body+=`<td class="td-mono" style="text-align:center;font-weight:700;color:var(--blue)">${val.toLocaleString()}</td>`);
+    body += `</tr>`;
+  });
+  if (showTotals){
+    body += `<tr style="border-top:2px solid var(--blue)"><td style="font-weight:700;color:var(--blue);position:sticky;left:0;background:var(--bg3);z-index:1">மொத்தம்</td>`;
+    p.colVals.forEach(cv=> colTotals[cv].forEach(val=> body+=`<td class="td-mono" style="text-align:center;font-weight:700;color:var(--blue)">${val.toLocaleString()}</td>`));
+    grand.forEach(val=> body+=`<td class="td-mono" style="text-align:center;font-weight:700;color:var(--green)">${val.toLocaleString()}</td>`);
+    body += `</tr>`;
+  }
+
+  const ncols = (hasCols?p.colVals.length*nv:nv) + (showTotals?(hasCols?nv:1):0) + 1;
+  wrap.innerHTML = `<table style="min-width:${Math.max(400,ncols*100)}px"><thead>${thead}</thead><tbody>${body}</tbody></table>`;
 
   // Summary strip
+  const grandTotal = grand.reduce((a,b)=>a+b,0);
   document.getElementById('pivot-summary-strip').innerHTML = [
-    {label:'வரிசைகள் (Rows)', val:p.rowVals.length, color:'var(--purple)'},
+    {label:'வரிசைகள் (Rows)', val:p.rowKeys.length?p.rowVals.length:1, color:'var(--purple)'},
     {label:'நெடுவரிசைகள் (Cols)', val:hasCols?p.colVals.length:1, color:'var(--teal)'},
-    {label:'மொத்த கடைகள்', val:p.data.length.toLocaleString(), color:'var(--blue)'},
-    {label:aggLabel+' மொத்தம்', val:grand.toLocaleString(), color:'var(--green)'}
+    {label:'மதிப்புகள் (Values)', val:nv, color:'var(--amber)'},
+    {label:'வடிகட்டப்பட்ட கடைகள்', val:p.data.length.toLocaleString(), color:'var(--blue)'}
   ].map(b=>`<div class="ekyc-stat-box"><div class="ekyc-stat-label">${b.label}</div><div class="ekyc-stat-value" style="color:${b.color}">${b.val}</div></div>`).join('');
 }
 
 function pivotToAOA() {
   const p = buildPivot();
-  const dimLabel = k => (PIVOT_DIM_FIELDS.find(f=>f[0]===k)||[,k])[1];
-  const valLabel = (PIVOT_VAL_FIELDS.find(f=>f[0]===p.valKey)||[,p.valKey])[1];
-  const fmtV = (k,v)=> k==='taluk' ? fmtTaluk(v) : v;
-  const hasCols = !!p.colKey;
+  const dl = k => (pvField(k)||{label:k}).label;
+  const aggLabel = {count:'Count',sum:'Sum',avg:'Avg',min:'Min',max:'Max'};
+  const fmtCompound = (keys, compound) => {
+    if (compound==='__all') return 'மொத்தம்';
+    if (!keys.length) return compound;
+    const parts = compound.split(PV_SEP);
+    return keys.map((k,i)=> k==='taluk'?fmtTaluk(parts[i]||''):(parts[i]||'')).join(' / ');
+  };
+  const hasCols = p.colKeys.length>0;
+  const nv = p.values.length;
 
-  const header = [dimLabel(p.rowKey), ...(hasCols ? p.colVals.map(cv=>fmtV(p.colKey,cv)) : [valLabel]), 'மொத்தம்'];
-  const rows = [header];
-  const colTotals = {}; p.colVals.forEach(cv=>colTotals[cv]=0); let grand=0;
+  // Header
+  const header = [p.rowKeys.map(dl).join(' / ')||'மொத்தம்'];
+  if (hasCols){
+    p.colVals.forEach(cv=> p.values.forEach(v=> header.push(fmtCompound(p.colKeys,cv)+(nv>1?(' — '+(v.key==='__count'?'Count':aggLabel[v.agg]+' '+dl(v.key))):''))));
+  } else {
+    p.values.forEach(v=> header.push(v.key==='__count'?'Count':aggLabel[v.agg]+' '+dl(v.key)));
+  }
+  p.values.forEach(v=> header.push('மொத்தம்'+(nv>1?(' '+(v.key==='__count'?'Count':aggLabel[v.agg])):'')));
+
+  const rows=[header];
+  const colTotals={}; p.colVals.forEach(cv=>colTotals[cv]=p.values.map(()=>0)); let grand=p.values.map(()=>0);
   p.rowVals.forEach(rv=>{
-    let rt=0; const line=[fmtV(p.rowKey,rv)];
-    p.colVals.forEach(cv=>{ const v=p.matrix[rv][cv]; line.push(v); rt+=v; colTotals[cv]+=v; });
-    line.push(rt); grand+=rt; rows.push(line);
+    const line=[fmtCompound(p.rowKeys,rv)]; const rt=p.values.map(()=>0);
+    p.colVals.forEach(cv=> p.matrix[rv][cv].forEach((val,vi)=>{ line.push(val); rt[vi]+=val; colTotals[cv][vi]+=val; grand[vi]+=val; }));
+    rt.forEach(v=>line.push(v));
+    rows.push(line);
   });
-  const totalLine=['மொத்தம்']; p.colVals.forEach(cv=>totalLine.push(colTotals[cv])); totalLine.push(grand);
+  const totalLine=['மொத்தம்'];
+  p.colVals.forEach(cv=> colTotals[cv].forEach(v=>totalLine.push(v)));
+  grand.forEach(v=>totalLine.push(v));
   rows.push(totalLine);
   return rows;
 }
@@ -4546,6 +5126,7 @@ async function copyPivotTable(btn) {
   await copyTableInCard('pivot-table-wrap', '#pivot-table-wrap table', btn);
 }
 
+
 function switchView(name) {
   // Defense-in-depth: editors cannot access master-only views
   if (currentUser?.role === 'editor' && ['access','compare','taluk','block','ekyc','pivot'].includes(name)) {
@@ -4563,7 +5144,7 @@ function switchView(name) {
   if(name==='audit') loadAudit();
   if(name==='access') renderAccessControl();
   if(name==='data') applyFilters();
-  if(name==='pivot') renderPivot();
+  if(name==='pivot') { renderPivotPanel(); renderPivot(); }
   if(name==='ekyc') {
     setupEkycDropzone();
     // For editors: hide upload card, show banner, auto-load latest from cloud
@@ -4594,12 +5175,18 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     closeModal();
     if(document.getElementById('audit-modal')) closeAuditModal();
+    ['shoplist-modal','shopfield-modal','pv-assign-modal','excel-modal'].forEach(id=>{
+      const m=document.getElementById(id); if(m) m.classList.remove('open');
+    });
   }
 });
 document.getElementById('audit-modal').addEventListener('click',function(e){if(e.target===this)closeAuditModal();});
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('settings-modal').addEventListener('click',function(e){if(e.target===this)document.getElementById('settings-modal').classList.remove('open');});
 document.getElementById('excel-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+document.getElementById('pv-assign-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+document.getElementById('shoplist-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+document.getElementById('shopfield-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
 
 // ── MASTER DATA COMPARISON ─────────────────────────────────
 let masterData = null;        // Array of shop objects from uploaded Excel
