@@ -883,7 +883,7 @@ tr:last-child td{border-bottom:none}
 
 <!-- EXCEL EXPORT OPTIONS MODAL -->
 <div class="modal-overlay" id="excel-modal">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:560px">
     <div class="modal-title">
       <span>⬇ Excel பதிவிறக்க விருப்பங்கள்</span>
       <button class="modal-close" onclick="document.getElementById('excel-modal').classList.remove('open')">✕</button>
@@ -895,6 +895,16 @@ tr:last-child td{border-bottom:none}
         <input type="checkbox" id="excel-include-abstract" checked style="accent-color:var(--blue)">
         Abstract (சுருக்க அட்டவணை) sheet-ஐ சேர்க்கவும்
       </label>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;color:var(--text);font-weight:600">📋 எந்த fields வேண்டும்? (கடை விவர columns)</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline" style="font-size:10px;padding:3px 8px" onclick="excelFieldAll(true)">✓ எல்லாம்</button>
+          <button class="btn btn-outline" style="font-size:10px;padding:3px 8px" onclick="excelFieldAll(false)">✕ ஒன்றுமில்லை</button>
+        </div>
+      </div>
+      <div id="excel-field-options" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;max-height:220px;overflow-y:auto;padding:8px;background:var(--bg3);border-radius:8px"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="document.getElementById('excel-modal').classList.remove('open')">ரத்து</button>
@@ -3548,14 +3558,26 @@ function openExcelOptions() {
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${o.sub}</div>
       </div>
     </label>`).join('');
+
+  // Field checkboxes — default to all checked
+  const fbox = document.getElementById('excel-field-options');
+  fbox.innerHTML = EXPORT_COLS_DEF.map(([k,lbl])=>`
+    <label style="display:flex;align-items:center;gap:7px;font-size:11px;padding:5px 7px;background:var(--bg2);border-radius:6px;cursor:pointer">
+      <input type="checkbox" class="excel-field-cb" value="${k}" checked style="accent-color:var(--green)">
+      <span>${lbl}</span>
+    </label>`).join('');
+
   document.getElementById('excel-modal').classList.add('open');
 }
+function excelFieldAll(state){ document.querySelectorAll('#excel-field-options .excel-field-cb').forEach(cb=>cb.checked=state); }
 
 function confirmExcelExport() {
   const mode = document.querySelector('input[name="excel-mode"]:checked')?.value || 'one';
   const withAbstract = document.getElementById('excel-include-abstract').checked;
+  const chosenFields = [...document.querySelectorAll('#excel-field-options .excel-field-cb:checked')].map(cb=>cb.value);
+  if (!chosenFields.length){ alert('குறைந்தது ஒரு field தேர்வு செய்யவும்'); return; }
   document.getElementById('excel-modal').classList.remove('open');
-  runExcelExport(mode, withAbstract);
+  runExcelExport(mode, withAbstract, chosenFields);
 }
 
 // Build a stats object for a group of rows
@@ -3654,9 +3676,10 @@ function buildAbstractSheet(src, mode) {
 }
 
 // Build a data sheet (array of rows) with header + sign-off
-function buildDataSheet(rows, titleText, signLeft, signRight) {
-  const colKeys = EXPORT_COLS_DEF.map(([k])=>k);
-  const colLabels = EXPORT_COLS_DEF.map(([,l])=>l);
+function buildDataSheet(rows, titleText, signLeft, signRight, fields) {
+  const colDef = (fields && fields.length) ? EXPORT_COLS_DEF.filter(([k])=>fields.includes(k)) : EXPORT_COLS_DEF;
+  const colKeys = colDef.map(([k])=>k);
+  const colLabels = colDef.map(([,l])=>l);
   const sorted = rows.slice().sort((a,b)=>{
     const bc=cmpBlock(g(a,'block'),g(b,'block')); if(bc)return bc;
     const sc=g(a,'society').localeCompare(g(b,'society'),'ta'); if(sc)return sc;
@@ -3671,12 +3694,12 @@ function buildDataSheet(rows, titleText, signLeft, signRight) {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const t=ws['A1']; if(t)t.s={fill:{fgColor:{rgb:'0D47A1'}},font:{color:{rgb:'FFFFFF'},bold:true,sz:12}};
   for(let c=0;c<colKeys.length;c++){const cell=ws[XLSX.utils.encode_cell({r:1,c})];if(cell)cell.s={fill:{fgColor:{rgb:'1565C0'}},font:{color:{rgb:'FFFFFF'},bold:true}};}
-  ws['!cols']=[{wch:7},{wch:14},{wch:26},{wch:12},{wch:10},{wch:18},{wch:10},{wch:16},{wch:14},{wch:18},{wch:18},{wch:14},{wch:12},{wch:14},{wch:16},{wch:18},{wch:18},{wch:14},{wch:20}];
+  ws['!cols']=colKeys.map(k=> k==='shopname'?{wch:26}: k==='society'?{wch:22}: k==='seller'?{wch:18}: {wch:14});
   ws['!freeze']={xSplit:0,ySplit:2};
   return ws;
 }
 
-function runExcelExport(mode, withAbstract) {
+function runExcelExport(mode, withAbstract, fields) {
   const baseData = filteredData.length ? filteredData : allData;
   const src = currentUser?.role==='editor'
     ? baseData.filter(r=>g(r,'block')===currentUser.block) : baseData;
@@ -3710,7 +3733,7 @@ function runExcelExport(mode, withAbstract) {
         allRows.push(...blockMap[blk][soc]);
       });
     });
-    const ws = buildDataSheet(allRows, 'அனைத்து கடைகள் — ' + (currentUser?.role==='editor'?currentUser.block:'திருவண்ணாமலை மாவட்டம்'), '', '');
+    const ws = buildDataSheet(allRows, 'அனைத்து கடைகள் — ' + (currentUser?.role==='editor'?currentUser.block:'திருவண்ணாமலை மாவட்டம்'), '', '', fields);
     XLSX.utils.book_append_sheet(wb, ws, 'All Shops');
   }
   else if (mode === 'taluk') {
@@ -3718,7 +3741,7 @@ function runExcelExport(mode, withAbstract) {
     const taluks = [...new Set(src.map(r=>g(r,'taluk')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
     taluks.forEach(tk=>{
       const rows = src.filter(r=>g(r,'taluk')===tk);
-      const ws = buildDataSheet(rows, fmtTaluk(tk) + ' — ' + rows.length + ' கடைகள்', fmtTaluk(tk), '');
+      const ws = buildDataSheet(rows, fmtTaluk(tk) + ' — ' + rows.length + ' கடைகள்', fmtTaluk(tk), '', fields);
       XLSX.utils.book_append_sheet(wb, ws, uniqName(fmtTaluk(tk), serial++));
     });
   }
@@ -3726,7 +3749,7 @@ function runExcelExport(mode, withAbstract) {
     let serial=1;
     Object.keys(blockMap).sort(cmpBlock).forEach(blk=>{
       const rows=[]; Object.values(blockMap[blk]).forEach(arr=>rows.push(...arr));
-      const ws = buildDataSheet(rows, blk + ' — ' + rows.length + ' கடைகள்', blk, '');
+      const ws = buildDataSheet(rows, blk + ' — ' + rows.length + ' கடைகள்', blk, '', fields);
       XLSX.utils.book_append_sheet(wb, ws, uniqName(blk, serial++));
     });
   }
@@ -3735,7 +3758,7 @@ function runExcelExport(mode, withAbstract) {
     Object.keys(blockMap).sort(cmpBlock).forEach(blk=>{
       Object.keys(blockMap[blk]).sort((a,b)=>a.localeCompare(b,'ta')).forEach(soc=>{
         const rows=blockMap[blk][soc];
-        const ws = buildDataSheet(rows, blk+' → '+soc, soc, blk);
+        const ws = buildDataSheet(rows, blk+' → '+soc, soc, blk, fields);
         XLSX.utils.book_append_sheet(wb, ws, uniqName(soc, serial++));
       });
     });
@@ -5372,6 +5395,7 @@ function applyMappingAndCompare(){
   }).filter(o=> cmpNorm(o.shopcode)!=='' );
 
   cmpReady = true;
+  cmpBlockFilter = '';
   document.getElementById('compare-controls').style.display='block';
   document.getElementById('master-status').innerHTML += ' · <span style="color:var(--green)">✓ ஒப்பீட்டிற்கு தயார் ('+masterData.length+' பழைய கடைகள்)</span>';
   compareView('summary');
@@ -5384,16 +5408,44 @@ function cmpNewData(){
 // New shop -> composite key
 function cmpNewKey(r){ return cmpKey(g(r,'shopcode'), g(r,'block')); }
 
+// Block filter applied to Missing/Extra/Mismatch views (set by clicking a summary row, or by the dropdown)
+let cmpBlockFilter = '';
+
 function compareView(mode){
   if (!cmpReady){ alert('முதலில் பழைய Excel upload செய்யவும்'); return; }
   cmpCurrentView = mode;
   document.querySelectorAll('.cmp-tab').forEach(b=> b.classList.toggle('btn-blue', b.dataset.cv===mode));
   const div = document.getElementById('compare-result');
-  if (mode==='summary')   cmpRenderSummary(div);
+  if (mode==='summary')   { cmpBlockFilter=''; cmpRenderSummary(div); }
   else if (mode==='missing')  cmpRenderMissing(div);
   else if (mode==='extra')    cmpRenderExtra(div);
   else if (mode==='mismatch') cmpRenderMismatch(div);
   else if (mode==='reconcile')cmpRenderReconcile(div);
+}
+
+// Click a block row in the summary → jump to the most relevant detail view, filtered to that block
+function cmpDrillBlock(block){
+  cmpBlockFilter = block;
+  const m = cmpBuildModel();
+  const miss = m.missing.filter(o=>o.block===block).length;
+  const ext  = m.extra.filter(r=>g(r,'block')===block).length;
+  const mis  = m.mismatches.filter(mm=>mm.block===block).length;
+  // Jump to whichever has the most issues for this block; default to missing
+  let target = 'missing';
+  if (ext>miss && ext>=mis) target='extra';
+  else if (mis>miss && mis>ext) target='mismatch';
+  if (!miss && !ext && !mis) { showToast('✓ '+block+' — வேறுபாடு இல்லை', 'green'); cmpBlockFilter=''; return; }
+  compareView(target);
+}
+
+function cmpClearBlockFilter(){ cmpBlockFilter=''; compareView(cmpCurrentView); }
+
+function cmpBlockFilterBar(count){
+  if (!cmpBlockFilter) return '';
+  return `<div style="display:flex;align-items:center;gap:8px;background:#4f8ef718;border:1px solid #4f8ef740;color:var(--blue);padding:7px 12px;border-radius:8px;margin-bottom:10px;font-size:11px">
+    📍 <b>${cmpBlockFilter}</b> ஒன்றியத்திற்கு மட்டும் வடிகட்டப்பட்டுள்ளது (${count} பதிவுகள்)
+    <button class="btn btn-outline" style="font-size:10px;padding:2px 8px;margin-left:auto" onclick="cmpClearBlockFilter()">✕ அனைத்து ஒன்றியங்களும்</button>
+  </div>`;
 }
 
 // ── Build the matched/missing/extra/mismatch model (cached) ──
@@ -5453,9 +5505,15 @@ function cmpRenderSummary(div){
     const ns = stat(newRows.filter(r=>g(r,'block')===blk), newGet);
     T.oS+=os.shops;T.nS+=ns.shops;T.oF+=os.full;T.nF+=ns.full;T.oP+=os.part;T.nP+=ns.part;T.oSoc+=os.socs;T.nSoc+=ns.socs;
     const d = (a,b)=>{ const x=b-a; if(!x) return '<span style="color:var(--muted)">0</span>'; return `<span style="color:${x>0?'var(--green)':'var(--red)'}">${x>0?'+':''}${x}</span>`; };
-    rowsHtml += `<tr ${i%2?'style="background:#0f1117"':''}>
+    // Per-block issue counts (missing+extra+mismatch) for this block — to surface "needs attention"
+    const blkMissing = m.missing.filter(o=>o.block===blk).length;
+    const blkExtra = m.extra.filter(r=>g(r,'block')===blk).length;
+    const blkMismatch = m.mismatches.filter(mm=>mm.block===blk).length;
+    const issues = blkMissing+blkExtra+blkMismatch;
+    const safeBlk = blk.replace(/'/g,"\\'");
+    rowsHtml += `<tr ${i%2?'style="background:#0f1117"':''} class="cmp-block-row" onclick="cmpDrillBlock('${safeBlk}')" style="cursor:pointer" title="${blk} — விவரம் காண க்ளிக் செய்யவும்">
       <td style="color:var(--muted);text-align:center">${i+1}</td>
-      <td style="font-weight:500">${blk}</td>
+      <td style="font-weight:500">${blk} <span style="font-size:9px;color:var(--blue)">▸</span>${issues?` <span style="background:#f0606022;color:var(--red);border-radius:50px;padding:1px 7px;font-size:9px;font-weight:700;margin-left:4px">${issues}</span>`:''}</td>
       <td class="td-mono" style="text-align:center">${os.shops}</td>
       <td class="td-mono" style="text-align:center">${ns.shops}</td>
       <td class="td-mono" style="text-align:center">${d(os.shops,ns.shops)}</td>
@@ -5503,6 +5561,7 @@ function cmpRenderSummary(div){
         </tr>
       </tbody>
     </table></div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px">▸ ஒரு ஒன்றியத்தை க்ளிக் செய்தால் அதன் missing/extra/mismatch கடைகளின் முழு பட்டியல் காட்டப்படும். சிவப்பு எண் = அந்த ஒன்றியத்தில் கவனிக்க வேண்டிய மொத்த பிரச்சனைகள்.</div>
     <button class="btn btn-green" style="margin-top:10px" onclick="cmpExportSummary()">⬇ Excel download</button>`;
 }
 
@@ -5513,12 +5572,14 @@ function cmpStatBox(label,val,color){
 // ── VIEW 2: In old, not in new ──
 function cmpRenderMissing(div){
   const m = cmpBuildModel();
-  const list = m.missing.slice().sort((a,b)=>cmpBlock(a.block,b.block) || (a.shopcode||'').localeCompare(b.shopcode||''));
-  let html = `<div style="background:#f0606018;border:1px solid #f0606040;color:var(--red);padding:10px;border-radius:8px;margin-bottom:12px">
+  let list = m.missing.slice().sort((a,b)=>cmpBlock(a.block,b.block) || (a.shopcode||'').localeCompare(b.shopcode||''));
+  if (cmpBlockFilter) list = list.filter(o=>o.block===cmpBlockFilter);
+  let html = cmpBlockFilterBar(list.length);
+  html += `<div style="background:#f0606018;border:1px solid #f0606040;color:var(--red);padding:10px;border-radius:8px;margin-bottom:12px">
     ❌ <b>${list.length}</b> கடைகள் பழைய தரவில் உள்ளன, புதிய சேகரிப்பில் இல்லை.<br>
     <span style="font-size:11px;color:var(--muted)">காரணம்: இன்னும் update செய்யப்படவில்லை · அல்லது தரையில் அந்த கடை இல்லை · அல்லது குறியீடு/ஒன்றியம் தவறாக புதியதில் பதிவாகியுள்ளது</span>
   </div>`;
-  if (!list.length){ div.innerHTML = html + '<div style="text-align:center;color:var(--green);padding:24px">🎉 பழைய கடைகள் அனைத்தும் புதியதில் உள்ளன</div>'; return; }
+  if (!list.length){ div.innerHTML = html + '<div style="text-align:center;color:var(--green);padding:24px">🎉 '+(cmpBlockFilter?cmpBlockFilter+'-ல் ':'')+'பழைய கடைகள் அனைத்தும் புதியதில் உள்ளன</div>'; return; }
   html += `<div class="table-wrap"><table><thead><tr>
     <th>குறியீடு</th><th>ஒன்றியம்</th><th>நிறுவனம்</th><th>கடை பெயர்</th><th>F/P</th><th>கட்டிடம்</th></tr></thead><tbody>`;
   list.slice(0,800).forEach(o=>{
@@ -5535,12 +5596,14 @@ function cmpRenderMissing(div){
 // ── VIEW 3: In new, not in old ──
 function cmpRenderExtra(div){
   const m = cmpBuildModel();
-  const list = m.extra.slice().sort((a,b)=>cmpBlock(g(a,'block'),g(b,'block')) || g(a,'shopcode').localeCompare(g(b,'shopcode')));
-  let html = `<div style="background:#2dd4bf18;border:1px solid #2dd4bf40;color:var(--teal);padding:10px;border-radius:8px;margin-bottom:12px">
+  let list = m.extra.slice().sort((a,b)=>cmpBlock(g(a,'block'),g(b,'block')) || g(a,'shopcode').localeCompare(g(b,'shopcode')));
+  if (cmpBlockFilter) list = list.filter(r=>g(r,'block')===cmpBlockFilter);
+  let html = cmpBlockFilterBar(list.length);
+  html += `<div style="background:#2dd4bf18;border:1px solid #2dd4bf40;color:var(--teal);padding:10px;border-radius:8px;margin-bottom:12px">
     ➕ <b>${list.length}</b> கடைகள் புதிய சேகரிப்பில் உள்ளன, பழைய தரவில் இல்லை.<br>
     <span style="font-size:11px;color:var(--muted)">காரணம்: உண்மையில் புதிய கடை · அல்லது குறியீடு/ஒன்றியம் தவறாக பதிவாகியுள்ளது</span>
   </div>`;
-  if (!list.length){ div.innerHTML = html + '<div style="text-align:center;color:var(--muted);padding:24px">புதிய கூடுதல் கடைகள் இல்லை</div>'; return; }
+  if (!list.length){ div.innerHTML = html + '<div style="text-align:center;color:var(--muted);padding:24px">'+(cmpBlockFilter?cmpBlockFilter+'-ல் ':'')+'புதிய கூடுதல் கடைகள் இல்லை</div>'; return; }
   html += `<div class="table-wrap"><table><thead><tr>
     <th>குறியீடு</th><th>ஒன்றியம்</th><th>நிறுவனம்</th><th>கடை பெயர்</th><th>F/P</th><th>கட்டிடம்</th><th>அட்டைகள்</th></tr></thead><tbody>`;
   list.slice(0,800).forEach(r=>{
@@ -5558,16 +5621,18 @@ function cmpRenderExtra(div){
 // ── VIEW 4: Field mismatches (grouped by field) ──
 function cmpRenderMismatch(div){
   const m = cmpBuildModel();
+  const scopedMismatches = cmpBlockFilter ? m.mismatches.filter(mm=>mm.block===cmpBlockFilter) : m.mismatches;
   // group by field
   const byField = {};
-  m.mismatches.forEach(mm=> mm.diffs.forEach(d=>{ (byField[d.field]=byField[d.field]||[]).push({code:mm.code,block:mm.block,shopname:mm.shopname,old:d.old,new:d.new,label:d.label}); }));
+  scopedMismatches.forEach(mm=> mm.diffs.forEach(d=>{ (byField[d.field]=byField[d.field]||[]).push({code:mm.code,block:mm.block,shopname:mm.shopname,old:d.old,new:d.new,label:d.label}); }));
   const fieldKeys = Object.keys(byField).sort((a,b)=>byField[b].length-byField[a].length);
 
-  let html = `<div style="background:#a78bfa18;border:1px solid #a78bfa40;color:var(--purple);padding:10px;border-radius:8px;margin-bottom:12px">
-    ⚠️ <b>${m.mismatches.length}</b> கடைகளில் வேறுபாடு (same குறியீடு+ஒன்றியம், ஆனால் field மாறுபட்டுள்ளது).<br>
+  let html = cmpBlockFilterBar(scopedMismatches.length);
+  html += `<div style="background:#a78bfa18;border:1px solid #a78bfa40;color:var(--purple);padding:10px;border-radius:8px;margin-bottom:12px">
+    ⚠️ <b>${scopedMismatches.length}</b> கடைகளில் வேறுபாடு (same குறியீடு+ஒன்றியம், ஆனால் field மாறுபட்டுள்ளது).<br>
     <span style="font-size:11px;color:var(--muted)">case/space/punctuation வேறுபாடுகள் தானாக புறக்கணிக்கப்படுகின்றன — உண்மையான வேறுபாடுகள் மட்டும்</span>
   </div>`;
-  if (!fieldKeys.length){ div.innerHTML = html + '<div style="text-align:center;color:var(--green);padding:24px">✅ பொருந்திய கடைகளில் வேறுபாடு இல்லை</div>'; return; }
+  if (!fieldKeys.length){ div.innerHTML = html + '<div style="text-align:center;color:var(--green);padding:24px">✅ '+(cmpBlockFilter?cmpBlockFilter+'-ல் ':'')+'பொருந்திய கடைகளில் வேறுபாடு இல்லை</div>'; return; }
 
   // Field filter chips
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">`;
