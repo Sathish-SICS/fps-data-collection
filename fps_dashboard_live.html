@@ -338,13 +338,13 @@ tr:last-child td{border-bottom:none}
         <div style="background:var(--bg2);border:1px solid #4f8ef744;border-radius:12px;padding:14px">
           <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:5px">⏱ முழுநேரம் - பகுதிநேரம்</div>
           <div style="display:flex;gap:10px">
-            <div style="flex:1;text-align:center">
+            <div style="flex:1;text-align:center;cursor:pointer;border-radius:8px;padding:4px" onclick="showShopList({timetype:'முழுநேரம்',title:'முழுநேரம் கடைகள்'})" title="முழுநேரம் கடைகள் காண க்ளிக் செய்யவும்">
               <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-full">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">முழுநேரம்</div>
               <div style="font-size:10px;color:var(--muted)" id="s-full-pct"></div>
             </div>
             <div style="width:1px;background:var(--border)"></div>
-            <div style="flex:1;text-align:center">
+            <div style="flex:1;text-align:center;cursor:pointer;border-radius:8px;padding:4px" onclick="showShopList({timetype:'பகுதிநேரம்',title:'பகுதிநேரம் கடைகள்'})" title="பகுதிநேரம் கடைகள் காண க்ளிக் செய்யவும்">
               <div style="font-size:22px;font-weight:700;color:var(--amber);font-family:'DM Mono',monospace" id="s-part">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">பகுதிநேரம்</div>
               <div style="font-size:10px;color:var(--muted)" id="s-part-pct"></div>
@@ -356,13 +356,13 @@ tr:last-child td{border-bottom:none}
         <div style="background:var(--bg2);border:1px solid #3ecf8e44;border-radius:12px;padding:14px">
           <div style="font-size:10px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📟 PoS இயந்திரம்</div>
           <div style="display:flex;gap:10px">
-            <div style="flex:1;text-align:center">
+            <div style="flex:1;text-align:center;cursor:pointer;border-radius:8px;padding:4px" onclick="showShopList({pos:'உள்ளது',title:'PoS உள்ள கடைகள்'})" title="PoS உள்ள கடைகள் காண க்ளிக் செய்யவும்">
               <div style="font-size:22px;font-weight:700;color:var(--teal);font-family:'DM Mono',monospace" id="s-pos">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">உள்ளது</div>
               <div style="font-size:10px;color:var(--muted)" id="s-pos-pct"></div>
             </div>
             <div style="width:1px;background:var(--border)"></div>
-            <div style="flex:1;text-align:center">
+            <div style="flex:1;text-align:center;cursor:pointer;border-radius:8px;padding:4px" onclick="showShopList({pos:'இல்லை',title:'PoS இல்லாத கடைகள்'})" title="PoS இல்லாத கடைகள் காண க்ளிக் செய்யவும்">
               <div style="font-size:22px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace" id="s-nopos">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">இல்லை</div>
               <div style="font-size:10px;color:var(--muted)" id="s-nopos-pct"></div>
@@ -374,13 +374,13 @@ tr:last-child td{border-bottom:none}
         <div style="background:var(--bg2);border:1px solid #a78bfa44;border-radius:12px;padding:14px">
           <div style="font-size:10px;color:var(--purple);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">🏘 இடப்பகுதி</div>
           <div style="display:flex;gap:10px">
-            <div style="flex:1;text-align:center">
+            <div style="flex:1;text-align:center;cursor:pointer;border-radius:8px;padding:4px" onclick="showShopList({area:'நகர்புறம்',title:'நகர்புற கடைகள்'})" title="நகர்புற கடைகள் காண க்ளிக் செய்யவும்">
               <div style="font-size:22px;font-weight:700;color:var(--blue);font-family:'DM Mono',monospace" id="s-urban">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">நகர்புறம்</div>
               <div style="font-size:10px;color:var(--muted)" id="s-urban-pct"></div>
             </div>
             <div style="width:1px;background:var(--border)"></div>
-            <div style="flex:1;text-align:center">
+            <div style="flex:1;text-align:center;cursor:pointer;border-radius:8px;padding:4px" onclick="showShopList({area:'கிராமபுறம்',title:'கிராமபுற கடைகள்'})" title="கிராமபுற கடைகள் காண க்ளிக் செய்யவும்">
               <div style="font-size:22px;font-weight:700;color:var(--green);font-family:'DM Mono',monospace" id="s-rural">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:2px">கிராமபுறம்</div>
               <div style="font-size:10px;color:var(--muted)" id="s-rural-pct"></div>
@@ -666,7 +666,7 @@ tr:last-child td{border-bottom:none}
           <button class="modal-close" onclick="document.getElementById('shoplist-modal').classList.remove('open')">✕</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-          <button class="btn btn-outline" onclick="openShopFieldPicker()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel (fields தேர்வு)</button>
+          <button class="btn btn-outline" onclick="openExcelOptionsForShopList()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel (grouping + fields)</button>
           <button class="btn btn-outline" onclick="exportShopListPdf()" style="color:var(--amber);border-color:#f5a62344;font-size:11px">⬇ PDF</button>
           <div style="flex:1"></div>
           <span id="shoplist-count" style="font-size:11px;color:var(--muted);align-self:center"></span>
@@ -1582,21 +1582,46 @@ function exportShopListExcel() {
 
 function exportShopListPdf() {
   if (!shopListRows.length) { alert('கடைகள் இல்லை'); return; }
-  const cols = [['serial','வ.எண்'],['shopcode','குறியீடு'],['shopname','கடை பெயர்'],['block','ஒன்றியம்'],['society','நிறுவனம்'],['timetype','நேரம்'],['area','அமைவிடம்'],['pos','PoS'],['cards','அட்டைகள்'],['seller','விற்பனையாளர்'],['phone','கைபேசி']];
+  const cols = [['serial','வ.எண்'],['shopcode','குறியீடு'],['shopname','கடை பெயர்'],['society','நிறுவனம்'],['timetype','நேரம்'],['area','அமைவிடம்'],['pos','PoS'],['cards','அட்டைகள்'],['seller','விற்பனையாளர்'],['phone','கைபேசி']];
+  // Group by block, then society, sorted by official block order
+  const byBlock = {};
+  shopListRows.forEach(r=>{
+    const blk = g(r,'block')||'(unknown)';
+    (byBlock[blk] = byBlock[blk] || []).push(r);
+  });
+  const blocks = Object.keys(byBlock).sort(cmpBlock);
+
+  const sectionHtml = blocks.map(blk=>{
+    const rows = byBlock[blk].slice().sort((a,b)=>{
+      const sc = g(a,'society').localeCompare(g(b,'society'),'ta'); if(sc)return sc;
+      return (parseInt(g(a,'serial'))||0) - (parseInt(g(b,'serial'))||0);
+    });
+    let idx = 0;
+    return `<h2 style="font-size:13px;margin:14px 0 4px;padding:5px 8px;background:#e3f0ff;color:#0d47a1;border-left:4px solid #1565c0">
+      🏢 ${blk} — ${rows.length} கடைகள்
+    </h2>
+    <table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody>
+    ${rows.map(r=>{ idx++; return `<tr>${cols.map(c=>{
+      let v = c[0]==='serial' ? idx : (g(r,c[0])||'');
+      if (c[0]==='taluk') v = fmtTaluk(v);
+      return `<td>${v}</td>`;
+    }).join('')}</tr>`; }).join('')}
+    </tbody></table>`;
+  }).join('');
+
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Shop List</title>
     <style>
       body{font-family:Arial,sans-serif;margin:18px;color:#222}
       h1{font-size:16px;margin:0 0 4px} .sub{color:#666;font-size:11px;margin-bottom:14px}
-      table{border-collapse:collapse;width:100%;font-size:10px}
+      table{border-collapse:collapse;width:100%;font-size:10px;margin-bottom:8px}
       th,td{border:1px solid #999;padding:4px 6px;text-align:left}
       th{background:#1565c0;color:#fff} tr:nth-child(even){background:#f4f6fb}
+      h2{page-break-before:auto} h2:first-of-type{page-break-before:auto}
     </style></head><body>
     <h1>🏛️ Thiruvannamalai — கடை விவரம்</h1>
-    <div class="sub">${shopListLabel} · மொத்தம் ${shopListRows.length} கடைகள் · ${new Date().toLocaleDateString()}</div>
-    <table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody>
-    ${shopListRows.map(r=>`<tr>${cols.map(c=>`<td>${c[0]==='taluk'?fmtTaluk(g(r,c[0])):(g(r,c[0])||'')}</td>`).join('')}</tr>`).join('')}
-    </tbody></table>
+    <div class="sub">${shopListLabel} · மொத்தம் ${shopListRows.length} கடைகள் · ${blocks.length} ஒன்றியம் · ${new Date().toLocaleDateString()}</div>
+    ${sectionHtml}
     <scr`+`ipt>setTimeout(()=>window.print(),400);</scr`+`ipt></body></html>`);
   w.document.close();
 }
@@ -3542,8 +3567,26 @@ const EXPORT_COLS_DEF = [
 // Ordered field-state for the Excel export picker: array of {key, on}.
 // Visual order in the list = the export column order.
 let excelFieldOrder = [];
+// When the master Excel dialog is opened from the shop-list popup, these carry the
+// pre-filtered scope through to runExcelExport.
+let excelDialogScope = null;   // array of rows (or null = default all-data)
+let excelDialogScopeTag = '';  // filename tag e.g. "PoS_இல்லை"
+
+// Called from the shop-list popup: opens the same master Excel dialog, but exports the
+// currently-visible shop list (already filtered by category) grouped as chosen.
+function openExcelOptionsForShopList() {
+  const rows = shopListRows.slice();
+  const tag = (shopListLabel||'').split('·')[0].trim().replace(/^.*?:\s*/, '') || 'shoplist';
+  openExcelOptions();
+  // Set AFTER openExcelOptions() has cleared its default scope
+  excelDialogScope = rows;
+  excelDialogScopeTag = tag;
+}
 
 function openExcelOptions() {
+  // Default: whole-district export (cleared here so re-opening the dialog doesn't reuse a stale shop-list scope)
+  excelDialogScope = null;
+  excelDialogScopeTag = '';
   const isEditor = currentUser?.role === 'editor';
   const opts = isEditor ? [
     {mode:'one', icon:'📄', title:'அனைத்தும் ஒரே sheet-ல்', sub:'உங்கள் block-ன் எல்லா கடைகளும் ஒரு தாளில்'},
@@ -3629,7 +3672,15 @@ function confirmExcelExport() {
   const chosenFields = excelFieldOrder.filter(f=>f.on).map(f=>f.key);
   if (!chosenFields.length){ alert('குறைந்தது ஒரு field தேர்வு செய்யவும்'); return; }
   document.getElementById('excel-modal').classList.remove('open');
-  runExcelExport(mode, withAbstract, chosenFields);
+  // If a shop-list scope was set, close the shop-list modal too and pass the scoped rows through
+  if (excelDialogScope){
+    const sc = excelDialogScope, tag = excelDialogScopeTag;
+    const shoplistM = document.getElementById('shoplist-modal'); if (shoplistM) shoplistM.classList.remove('open');
+    excelDialogScope = null; excelDialogScopeTag = '';
+    runExcelExport(mode, withAbstract, chosenFields, sc, tag);
+  } else {
+    runExcelExport(mode, withAbstract, chosenFields);
+  }
 }
 
 // Build a stats object for a group of rows
@@ -3756,10 +3807,15 @@ function buildDataSheet(rows, titleText, signLeft, signRight, fields) {
   return ws;
 }
 
-function runExcelExport(mode, withAbstract, fields) {
-  const baseData = filteredData.length ? filteredData : allData;
-  const src = currentUser?.role==='editor'
-    ? baseData.filter(r=>g(r,'block')===currentUser.block) : baseData;
+function runExcelExport(mode, withAbstract, fields, sourceRows, scopeTag) {
+  let src;
+  if (sourceRows && sourceRows.length){
+    src = sourceRows;
+  } else {
+    const baseData = filteredData.length ? filteredData : allData;
+    src = currentUser?.role==='editor'
+      ? baseData.filter(r=>g(r,'block')===currentUser.block) : baseData;
+  }
   if (!src.length) { alert('தரவு இல்லை — முதலில் data load ஆகட்டும்'); return; }
 
   // Group by block → society
@@ -3781,6 +3837,7 @@ function runExcelExport(mode, withAbstract, fields) {
   };
 
   let scopeName = currentUser?.role==='editor' ? (currentUser.block+'_') : '';
+  if (scopeTag) scopeName += scopeTag.replace(/[^\w\u0B80-\u0BFF]+/g,'_').slice(0,30) + '_';
 
   if (mode === 'one') {
     // Single flat sheet of all shops
