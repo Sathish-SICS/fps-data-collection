@@ -667,7 +667,7 @@ tr:last-child td{border-bottom:none}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
           <button class="btn btn-outline" onclick="openExcelOptionsForShopList()" style="color:var(--green);border-color:#3ecf8e44;font-size:11px">⬇ Excel (grouping + fields)</button>
-          <button class="btn btn-outline" onclick="exportShopListPdf()" style="color:var(--amber);border-color:#f5a62344;font-size:11px">⬇ PDF</button>
+          <button class="btn btn-outline" onclick="openExcelOptionsForShopList('pdf')" style="color:var(--amber);border-color:#f5a62344;font-size:11px">⬇ PDF (grouping + fields)</button>
           <div style="flex:1"></div>
           <span id="shoplist-count" style="font-size:11px;color:var(--muted);align-self:center"></span>
         </div>
@@ -881,16 +881,29 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
-<!-- EXCEL EXPORT OPTIONS MODAL -->
+<!-- EXPORT OPTIONS MODAL (Excel or PDF) -->
 <div class="modal-overlay" id="excel-modal">
   <div class="modal" style="max-width:560px">
     <div class="modal-title">
-      <span>⬇ Excel பதிவிறக்க விருப்பங்கள்</span>
+      <span>⬇ பதிவிறக்க விருப்பங்கள் (Export options)</span>
       <button class="modal-close" onclick="document.getElementById('excel-modal').classList.remove('open')">✕</button>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">எப்படி வேண்டும் என்பதைத் தேர்வு செய்யவும்:</div>
+
+    <!-- Format toggle -->
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px">
+        <input type="radio" name="export-format" value="excel" checked onchange="onExportFormatChange()" style="accent-color:var(--green)">
+        <span>📗 Excel</span>
+      </label>
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px">
+        <input type="radio" name="export-format" value="pdf" onchange="onExportFormatChange()" style="accent-color:var(--amber)">
+        <span>📄 PDF</span>
+      </label>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">எப்படி வேண்டும் என்பதைத் தேர்வு செய்யவும்:</div>
     <div id="excel-options" style="display:flex;flex-direction:column;gap:10px"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+    <div id="excel-abstract-row" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);cursor:pointer">
         <input type="checkbox" id="excel-include-abstract" checked style="accent-color:var(--blue)">
         Abstract (சுருக்க அட்டவணை) sheet-ஐ சேர்க்கவும்
@@ -909,7 +922,7 @@ tr:last-child td{border-bottom:none}
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="document.getElementById('excel-modal').classList.remove('open')">ரத்து</button>
-      <button class="btn btn-green" onclick="confirmExcelExport()">⬇ பதிவிறக்கு</button>
+      <button class="btn btn-green" id="excel-confirm-btn" onclick="confirmExcelExport()">⬇ பதிவிறக்கு</button>
     </div>
   </div>
 </div>
@@ -3572,15 +3585,20 @@ let excelFieldOrder = [];
 let excelDialogScope = null;   // array of rows (or null = default all-data)
 let excelDialogScopeTag = '';  // filename tag e.g. "PoS_இல்லை"
 
-// Called from the shop-list popup: opens the same master Excel dialog, but exports the
-// currently-visible shop list (already filtered by category) grouped as chosen.
-function openExcelOptionsForShopList() {
+// Called from the shop-list popup: opens the same master Export dialog, but scoped to the
+// currently-visible (already category-filtered) shop list. Optional preferredFormat = 'pdf' | 'excel'.
+function openExcelOptionsForShopList(preferredFormat) {
   const rows = shopListRows.slice();
   const tag = (shopListLabel||'').split('·')[0].trim().replace(/^.*?:\s*/, '') || 'shoplist';
   openExcelOptions();
   // Set AFTER openExcelOptions() has cleared its default scope
   excelDialogScope = rows;
   excelDialogScopeTag = tag;
+  // Pre-select the requested format
+  if (preferredFormat === 'pdf'){
+    const r = document.querySelector('input[name="export-format"][value="pdf"]');
+    if (r){ r.checked = true; onExportFormatChange(); }
+  }
 }
 
 function openExcelOptions() {
@@ -3612,7 +3630,22 @@ function openExcelOptions() {
   excelFieldOrder = EXPORT_COLS_DEF.map(([k])=>({key:k, on:true}));
   renderExcelFieldList();
 
+  // Reset format to Excel each time the dialog opens
+  const excelRadio = document.querySelector('input[name="export-format"][value="excel"]');
+  if (excelRadio) excelRadio.checked = true;
+  onExportFormatChange();
+
   document.getElementById('excel-modal').classList.add('open');
+}
+
+// Format toggle handler: PDF has no "Abstract sheet" concept, so hide that row.
+// Also update the confirm button label to make it obvious which format will be produced.
+function onExportFormatChange(){
+  const fmt = document.querySelector('input[name="export-format"]:checked')?.value || 'excel';
+  const abstractRow = document.getElementById('excel-abstract-row');
+  const btn = document.getElementById('excel-confirm-btn');
+  if (abstractRow) abstractRow.style.display = (fmt==='pdf') ? 'none' : '';
+  if (btn) btn.innerHTML = (fmt==='pdf') ? '⬇ PDF பதிவிறக்கு' : '⬇ Excel பதிவிறக்கு';
 }
 
 function excelFieldResetOrder(){
@@ -3667,20 +3700,117 @@ function excelFieldDrop(e, i){
 function excelFieldDragEnd(e){ e.currentTarget.classList.remove('dragging'); excelDragIdx=null; }
 
 function confirmExcelExport() {
+  const fmt = document.querySelector('input[name="export-format"]:checked')?.value || 'excel';
   const mode = document.querySelector('input[name="excel-mode"]:checked')?.value || 'one';
   const withAbstract = document.getElementById('excel-include-abstract').checked;
   const chosenFields = excelFieldOrder.filter(f=>f.on).map(f=>f.key);
   if (!chosenFields.length){ alert('குறைந்தது ஒரு field தேர்வு செய்யவும்'); return; }
   document.getElementById('excel-modal').classList.remove('open');
   // If a shop-list scope was set, close the shop-list modal too and pass the scoped rows through
+  let sc = null, tag = '';
   if (excelDialogScope){
-    const sc = excelDialogScope, tag = excelDialogScopeTag;
+    sc = excelDialogScope; tag = excelDialogScopeTag;
     const shoplistM = document.getElementById('shoplist-modal'); if (shoplistM) shoplistM.classList.remove('open');
     excelDialogScope = null; excelDialogScopeTag = '';
-    runExcelExport(mode, withAbstract, chosenFields, sc, tag);
-  } else {
-    runExcelExport(mode, withAbstract, chosenFields);
   }
+  if (fmt==='pdf'){
+    runPdfExport(mode, chosenFields, sc, tag);
+  } else {
+    if (sc) runExcelExport(mode, withAbstract, chosenFields, sc, tag);
+    else runExcelExport(mode, withAbstract, chosenFields);
+  }
+}
+
+// PDF export honoring the same mode/fields as Excel. Grouping is realised as printable
+// section headers (All-in-one → one section; Taluk/Block/Society → one section per group).
+function runPdfExport(mode, fields, sourceRows, scopeTag){
+  let src;
+  if (sourceRows && sourceRows.length) src = sourceRows;
+  else {
+    const baseData = filteredData.length ? filteredData : allData;
+    src = currentUser?.role==='editor'
+      ? baseData.filter(r=>g(r,'block')===currentUser.block) : baseData;
+  }
+  if (!src.length){ alert('தரவு இல்லை'); return; }
+
+  // Field labels & fresh serial handling — same conventions as buildDataSheet
+  const colDef = (fields && fields.length)
+    ? fields.map(k => EXPORT_COLS_DEF.find(([fk])=>fk===k)).filter(Boolean)
+    : EXPORT_COLS_DEF;
+  const colKeys = colDef.map(([k])=>k);
+  const colLabels = colDef.map(([,l])=>l);
+
+  // Group rows into sections per the chosen mode
+  let sections = []; // [{title, rows}]
+  const sortByBlockThenSoc = (a,b)=>{
+    const bc=cmpBlock(g(a,'block'),g(b,'block')); if(bc)return bc;
+    const sc=g(a,'society').localeCompare(g(b,'society'),'ta'); if(sc)return sc;
+    return (parseInt(g(a,'serial'))||0)-(parseInt(g(b,'serial'))||0);
+  };
+  const scopedSorted = src.slice().sort(sortByBlockThenSoc);
+  if (mode==='one' || (currentUser?.role==='editor' && mode!=='society')){
+    sections = [{title:'அனைத்து கடைகள் — '+(currentUser?.role==='editor'?currentUser.block:'திருவண்ணாமலை மாவட்டம்'), rows:scopedSorted}];
+  } else if (mode==='taluk'){
+    const taluks = [...new Set(src.map(r=>g(r,'taluk')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+    taluks.forEach(tk=>{
+      const rows = src.filter(r=>g(r,'taluk')===tk).sort(sortByBlockThenSoc);
+      sections.push({title:'📍 '+fmtTaluk(tk)+' — '+rows.length+' கடைகள்', rows});
+    });
+  } else if (mode==='block'){
+    const blocks = [...new Set(src.map(r=>g(r,'block')).filter(Boolean))].sort(cmpBlock);
+    blocks.forEach(blk=>{
+      const rows = src.filter(r=>g(r,'block')===blk).sort(sortByBlockThenSoc);
+      sections.push({title:'🏢 '+blk+' — '+rows.length+' கடைகள்', rows});
+    });
+  } else { // society
+    const blocks = [...new Set(src.map(r=>g(r,'block')).filter(Boolean))].sort(cmpBlock);
+    blocks.forEach(blk=>{
+      const socs = [...new Set(src.filter(r=>g(r,'block')===blk).map(r=>g(r,'society')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ta'));
+      socs.forEach(soc=>{
+        const rows = src.filter(r=>g(r,'block')===blk && g(r,'society')===soc)
+          .sort((a,b)=>(parseInt(g(a,'serial'))||0)-(parseInt(g(b,'serial'))||0));
+        sections.push({title:'📑 '+blk+' → '+soc+' — '+rows.length+' கடைகள்', rows});
+      });
+    });
+  }
+
+  const subtitleBits = [];
+  if (scopeTag) subtitleBits.push(scopeTag);
+  subtitleBits.push('மொத்தம் '+src.length+' கடைகள்');
+  subtitleBits.push(sections.length+' பிரிவு');
+  subtitleBits.push(new Date().toLocaleDateString());
+
+  const cellFor = (r, k, idx) => {
+    if (k==='serial') return idx;
+    if (k==='taluk') return fmtTaluk(g(r,k)||'');
+    return (g(r,k)||'').toString();
+  };
+  const esc = s => (s==null?'':s.toString()).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
+  const sectionHtml = sections.map(sec=>{
+    let idx = 0;
+    const bodyRows = sec.rows.map(r=>{ idx++; return `<tr>${colKeys.map(k=>`<td>${esc(cellFor(r,k,idx))}</td>`).join('')}</tr>`; }).join('');
+    return `<h2>${esc(sec.title)}</h2>
+      <table><thead><tr>${colLabels.map(l=>`<th>${esc(l)}</th>`).join('')}</tr></thead>
+      <tbody>${bodyRows}</tbody></table>`;
+  }).join('');
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Shop List</title>
+    <style>
+      body{font-family:Arial,sans-serif;margin:18px;color:#222}
+      h1{font-size:16px;margin:0 0 4px}
+      h2{font-size:13px;margin:14px 0 4px;padding:5px 8px;background:#e3f0ff;color:#0d47a1;border-left:4px solid #1565c0;page-break-before:auto}
+      h2:first-of-type{page-break-before:auto}
+      .sub{color:#666;font-size:11px;margin-bottom:14px}
+      table{border-collapse:collapse;width:100%;font-size:10px;margin-bottom:8px}
+      th,td{border:1px solid #999;padding:4px 6px;text-align:left}
+      th{background:#1565c0;color:#fff} tr:nth-child(even){background:#f4f6fb}
+    </style></head><body>
+    <h1>🏛️ Thiruvannamalai — கடை விவரம்</h1>
+    <div class="sub">${esc(subtitleBits.join(' · '))}</div>
+    ${sectionHtml}
+    <scr`+`ipt>setTimeout(()=>window.print(),400);</scr`+`ipt></body></html>`);
+  w.document.close();
 }
 
 // Build a stats object for a group of rows
