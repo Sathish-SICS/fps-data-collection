@@ -67,9 +67,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .stat-sub{font-size:10px;color:var(--muted);margin-top:4px}
 
 /* TABS */
-.tabs{display:flex;gap:3px;background:var(--bg2);padding:4px;border-radius:10px;border:1px solid var(--border);width:fit-content;margin-bottom:14px;flex-wrap:wrap}
-.tab{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);border:none;background:none;font-family:inherit;transition:all .15s;white-space:nowrap}
-.tab.active{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.tabs{display:flex;gap:6px;background:var(--bg2);padding:6px;border-radius:12px;border:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border:1px solid transparent;background:var(--bg3);font-family:inherit;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;line-height:1.15}
+.tab:hover{color:var(--text);background:#1a2030;border-color:var(--border)}
+.tab.active{background:linear-gradient(135deg,#1e3a5f 0%,#1a2540 100%);color:var(--blue);border-color:#4f8ef766;box-shadow:0 0 0 1px #4f8ef733 inset,0 2px 6px rgba(79,142,247,.15)}
+@media (max-width:700px){
+  .tabs{gap:8px;padding:8px;border-radius:14px}
+  .tab{flex:1 1 calc(50% - 8px);min-width:calc(50% - 8px);justify-content:center;padding:12px 10px;font-size:12px;text-align:center;white-space:normal;min-height:52px;border-radius:11px}
+  .tab.active{background:linear-gradient(135deg,#1e3a5f 0%,#1a2540 100%);box-shadow:0 0 0 1px #4f8ef755 inset,0 3px 8px rgba(79,142,247,.2)}
+}
 
 /* CARD */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
@@ -399,13 +405,13 @@ tr:last-child td{border-bottom:none}
 
     <!-- TABS -->
     <div class="tabs" id="main-tabs">
-      <button class="tab active" onclick="switchView('overview')" id="tab-overview">மேற்பார்வை</button>
-      <button class="tab" onclick="switchView('hierarchy')" id="tab-hierarchy">📊 இதுவரை பதிவு செய்யப்பட்டுள்ளவற்றின் விவரம்</button>
-      <button class="tab" onclick="switchView('data')" id="tab-data">✏️ தரவுகளில் திருத்தம் மேற்கொள்</button>
-      <button class="tab" onclick="switchView('pivot')" id="tab-pivot" style="display:none">🧮 Pivot Analyser</button>
-      <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access Control</button>
-      <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">திருத்தம் மேற்கொள்ளப்பட்டவற்றின் விவரம்</button>
-      <button class="tab" onclick="switchView('compare')" id="tab-compare" style="display:none">📊 ஒப்பிடு பார்வை</button>
+      <button class="tab active" onclick="switchView('overview')" id="tab-overview">📊 மேற்பார்வை</button>
+      <button class="tab" onclick="switchView('hierarchy')" id="tab-hierarchy">📋 பதிவு விவரம்</button>
+      <button class="tab" onclick="switchView('data')" id="tab-data">✏️ திருத்தம்</button>
+      <button class="tab" onclick="switchView('pivot')" id="tab-pivot" style="display:none">🧮 Pivot</button>
+      <button class="tab" onclick="switchView('access')" id="tab-access" style="display:none">🔑 Access</button>
+      <button class="tab" onclick="switchView('audit')" id="tab-audit" style="display:none">📜 திருத்த வரலாறு</button>
+      <button class="tab" onclick="switchView('compare')" id="tab-compare" style="display:none">🔀 ஒப்பிடு</button>
     </div>
 
     <!-- OVERVIEW -->
