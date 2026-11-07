@@ -1521,8 +1521,290 @@ function renderOverviewDetail(dimKey, value) {
       </div>
     </div>`;
 
+  // For godown: also render the flow chart section below the stats
+  if (dimKey === 'godown') {
+    renderGodownFlowChart(value, rows, content);
+  }
+
   panel.style.display = 'block';
   panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ── GODOWN FLOW CHART ─────────────────────────────────────────
+// Shows Godown → Taluk → Block → Society tree with toggle controls
+function renderGodownFlowChart(godownName, rows, contentEl) {
+  // Build toggle controls and SVG tree below the existing stats content
+  const flowId = 'godown-flow-' + Date.now();
+
+  // Collect hierarchy data
+  function buildTree() {
+    const showTaluk   = document.getElementById('gf-show-taluk')?.checked  !== false;
+    const showBlock   = document.getElementById('gf-show-block')?.checked  !== false;
+    const showSociety = document.getElementById('gf-show-society')?.checked !== false;
+
+    // taluk → block → society → shops[]
+    const taluks = {};
+    rows.forEach(r => {
+      const tk = g(r,'taluk') || '—';
+      const bl = g(r,'block') || '—';
+      const sc = g(r,'society') || '—';
+      if (!taluks[tk]) taluks[tk] = {};
+      if (!taluks[tk][bl]) taluks[tk][bl] = {};
+      if (!taluks[tk][bl][sc]) taluks[tk][bl][sc] = 0;
+      taluks[tk][bl][sc]++;
+    });
+
+    return { taluks, showTaluk, showBlock, showSociety };
+  }
+
+  function drawSVG() {
+    const { taluks, showTaluk, showBlock, showSociety } = buildTree();
+    const svg = document.getElementById(flowId);
+    if (!svg) return;
+
+    // Colors
+    const C = {
+      godown:  { fill:'#1e3a5f', stroke:'#4f8ef7', text:'#93c5fd' },
+      taluk:   { fill:'#1a3a2a', stroke:'#2dd4bf', text:'#5eead4' },
+      block:   { fill:'#2a2a1a', stroke:'#f5a623', text:'#fcd34d' },
+      society: { fill:'#2a1a2e', stroke:'#a78bfa', text:'#c4b5fd' },
+    };
+
+    // Layout constants
+    const GODOWN_W = 160, NODE_H = 32, NODE_R = 7;
+    const TALUK_W = 150, BLOCK_W = 150, SOC_W = 160;
+    const HGAP = 60; // horizontal gap between columns
+    const VGAP = 10; // vertical gap between sibling nodes
+
+    // Flatten visible levels to compute positions
+    const talukKeys = Object.keys(taluks).sort((a,b)=>a.localeCompare(b,'ta'));
+
+    // Build node list with y positions
+    let nodes = []; // {id, label, level, x, y, w, parent, count}
+    let edges = []; // {x1,y1,x2,y2}
+
+    // Column x positions depend on which levels are shown
+    let colX = { godown: 20 };
+    let col = 20 + GODOWN_W + HGAP;
+    if (showTaluk)   { colX.taluk   = col; col += TALUK_W + HGAP; }
+    if (showBlock)   { colX.block   = col; col += BLOCK_W + HGAP; }
+    if (showSociety) { colX.society = col; col += SOC_W  + HGAP; }
+
+    const totalW = col;
+
+    // --- First pass: count leaf rows for each node to size Y ---
+    // We do a simple iterative layout: assign Y by order of appearance
+
+    let currentY = 60; // top padding
+    const godownY = currentY;
+    const godownCount = rows.length;
+    const godownId = 'gdn';
+
+    // We'll collect all block and society nodes to find total height
+    // Simple approach: walk tree, assign Y to each visible node
+    const allNodes = [];
+    const allEdges = [];
+
+    // Godown node placed at top, vertically centered later
+    // First compute all leaf heights, then centre parents
+
+    // ---- Build structured list ----
+    // For each taluk → for each block → for each society → leaf node
+    // Assign Y sequentially to the deepest visible level, then centre parents
+
+    // Determine deepest visible level
+    const deepLevel = showSociety ? 'society' : (showBlock ? 'block' : (showTaluk ? 'taluk' : 'godown'));
+
+    let leafY = 60;
+    const talukMeta = [];
+
+    talukKeys.forEach(tk => {
+      const blockKeys = Object.keys(taluks[tk]).sort(cmpBlock);
+      const talukStart = leafY;
+      const blockMeta = [];
+
+      blockKeys.forEach(bl => {
+        const socKeys = Object.keys(taluks[tk][bl]).sort((a,b)=>a.localeCompare(b,'ta'));
+        const blockStart = leafY;
+        const socMeta = [];
+
+        socKeys.forEach(sc => {
+          const cnt = taluks[tk][bl][sc];
+          if (deepLevel === 'society') {
+            socMeta.push({ name: sc, y: leafY, count: cnt });
+            leafY += NODE_H + VGAP;
+          }
+        });
+
+        const blockCount = Object.values(taluks[tk][bl]).reduce((s,v)=>s+v,0);
+        if (deepLevel === 'block') {
+          blockMeta.push({ name: bl, y: leafY, count: blockCount, socs: socMeta });
+          leafY += NODE_H + VGAP;
+        } else if (deepLevel === 'society') {
+          const blockMid = socMeta.length
+            ? (socMeta[0].y + socMeta[socMeta.length-1].y) / 2
+            : leafY;
+          blockMeta.push({ name: bl, y: blockMid, count: blockCount, socs: socMeta });
+        }
+      });
+
+      const talukCount = Object.values(taluks[tk]).reduce((s,v)=>s+Object.values(v).reduce((a,b)=>a+b,0),0);
+      if (deepLevel === 'taluk') {
+        talukMeta.push({ name: tk, y: leafY, count: talukCount, blocks: blockMeta });
+        leafY += NODE_H + VGAP;
+      } else {
+        const firstLeaf = blockMeta[0];
+        const lastLeaf  = blockMeta[blockMeta.length-1];
+        const talukMid  = firstLeaf && lastLeaf
+          ? (firstLeaf.y + lastLeaf.y) / 2
+          : leafY;
+        talukMeta.push({ name: tk, y: talukMid, count: talukCount, blocks: blockMeta });
+      }
+    });
+
+    const godownMid = talukMeta.length
+      ? (talukMeta[0].y + talukMeta[talukMeta.length-1].y) / 2
+      : 80;
+
+    const totalH = leafY + 40;
+
+    // ---- Draw SVG ----
+    function nodeRect(x, y, w, cfg, label, sublabel) {
+      const cx = x + w/2, cy = y + NODE_H/2;
+      return `
+        <rect x="${x}" y="${y}" width="${w}" height="${NODE_H}" rx="${NODE_R}" ry="${NODE_R}"
+          fill="${cfg.fill}" stroke="${cfg.stroke}" stroke-width="1.5"/>
+        <text x="${cx}" y="${cy - (sublabel?4:0)}" text-anchor="middle" dominant-baseline="middle"
+          fill="${cfg.text}" font-size="11" font-family="'Noto Sans Tamil',sans-serif" font-weight="600">${label}</text>
+        ${sublabel ? `<text x="${cx}" y="${cy+9}" text-anchor="middle" dominant-baseline="middle"
+          fill="${cfg.stroke}" font-size="9" font-family="'DM Mono',monospace">${sublabel}</text>` : ''}`;
+    }
+
+    function edge(x1,y1,x2,y2) {
+      const mx = (x1+x2)/2;
+      return `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"
+        fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    }
+
+    function clickable(filter, x, y, w, h, label) {
+      const f = JSON.stringify(filter).replace(/"/g,'&quot;');
+      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${NODE_R}" ry="${NODE_R}"
+        fill="transparent" stroke="none" style="cursor:pointer"
+        onclick='showShopList(${JSON.stringify(filter)})'
+        title="${label} — கடை விவரம் காண க்ளிக் செய்யவும்"/>`;
+    }
+
+    let svgBody = '';
+
+    // Godown node
+    const gx = colX.godown, gy = godownMid;
+    svgBody += nodeRect(gx, gy, GODOWN_W, C.godown, godownName, godownCount + ' கடைகள்');
+    svgBody += clickable({godown: godownName, title:'கிடங்கு: '+godownName}, gx, gy, GODOWN_W, NODE_H, godownName);
+
+    talukMeta.forEach(tk => {
+      let prevRight = gx + GODOWN_W;
+      let prevMidY  = godownMid + NODE_H/2;
+
+      if (showTaluk) {
+        const tx = colX.taluk, ty = tk.y;
+        svgBody += edge(prevRight, prevMidY, tx, ty + NODE_H/2);
+        svgBody += nodeRect(tx, ty, TALUK_W, C.taluk, fmtTaluk(tk.name), tk.count + ' கடைகள்');
+        svgBody += clickable({godown:godownName, taluk:tk.name, title:'வட்டம்: '+fmtTaluk(tk.name)}, tx, ty, TALUK_W, NODE_H, fmtTaluk(tk.name));
+        prevRight = tx + TALUK_W;
+        prevMidY  = ty + NODE_H/2;
+      }
+
+      if (showBlock) {
+        tk.blocks.forEach(bl => {
+          const bx = colX.block, by = bl.y;
+          const srcY = showTaluk ? (tk.y + NODE_H/2) : prevMidY;
+          const srcX = showTaluk ? (colX.taluk + TALUK_W) : prevRight;
+          svgBody += edge(srcX, srcY, bx, by + NODE_H/2);
+          svgBody += nodeRect(bx, by, BLOCK_W, C.block, bl.name, bl.count + ' கடைகள்');
+          svgBody += clickable({godown:godownName, block:bl.name, title:'ஒன்றியம்: '+bl.name}, bx, by, BLOCK_W, NODE_H, bl.name);
+
+          if (showSociety) {
+            bl.socs.forEach(sc => {
+              const sx = colX.society, sy = sc.y;
+              svgBody += edge(bx + BLOCK_W, by + NODE_H/2, sx, sy + NODE_H/2);
+              svgBody += nodeRect(sx, sy, SOC_W, C.society, sc.name.length > 18 ? sc.name.slice(0,17)+'…' : sc.name, sc.count + ' கடைகள்');
+              svgBody += clickable({godown:godownName, block:bl.name, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W, NODE_H, sc.name);
+            });
+          }
+        });
+      } else if (showSociety && !showBlock) {
+        // taluk → society directly
+        tk.blocks.forEach(bl => {
+          bl.socs.forEach(sc => {
+            const sx = colX.society, sy = sc.y;
+            const srcX = showTaluk ? (colX.taluk + TALUK_W) : (gx + GODOWN_W);
+            const srcY = showTaluk ? (tk.y + NODE_H/2) : prevMidY;
+            svgBody += edge(srcX, srcY, sx, sy + NODE_H/2);
+            svgBody += nodeRect(sx, sy, SOC_W, C.society, sc.name.length > 18 ? sc.name.slice(0,17)+'…' : sc.name, sc.count + ' கடைகள்');
+            svgBody += clickable({godown:godownName, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W, NODE_H, sc.name);
+          });
+        });
+      }
+    });
+
+    // Column headers
+    const hdrY = 20;
+    function colHdr(x, w, label, color) {
+      return `<text x="${x+w/2}" y="${hdrY}" text-anchor="middle" fill="${color}"
+        font-size="10" font-family="'DM Mono',monospace" font-weight="700" letter-spacing="0.08em">${label}</text>`;
+    }
+    svgBody += colHdr(colX.godown, GODOWN_W, 'கிடங்கு', C.godown.stroke);
+    if (showTaluk)   svgBody += colHdr(colX.taluk,   TALUK_W, 'வட்டம்',    C.taluk.stroke);
+    if (showBlock)   svgBody += colHdr(colX.block,   BLOCK_W, 'ஒன்றியம்',  C.block.stroke);
+    if (showSociety) svgBody += colHdr(colX.society, SOC_W,   'நிறுவனம்',  C.society.stroke);
+
+    svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+    svg.setAttribute('height', totalH);
+    svg.setAttribute('width', '100%');
+    svg.innerHTML = svgBody;
+  }
+
+  // Inject flow-chart section into the content element
+  const flowSection = document.createElement('div');
+  flowSection.id = 'godown-flow-section';
+  flowSection.style.cssText = 'margin-top:20px;border-top:1px solid var(--border);padding-top:16px';
+  flowSection.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em">
+        📦 கிடங்கு → நிறுவன வரைபடம் (Flow Chart)
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--teal);cursor:pointer">
+          <input type="checkbox" id="gf-show-taluk" checked style="accent-color:var(--teal);width:14px;height:14px">
+          வட்டம்
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--amber);cursor:pointer">
+          <input type="checkbox" id="gf-show-block" checked style="accent-color:var(--amber);width:14px;height:14px">
+          ஒன்றியம்
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--purple);cursor:pointer">
+          <input type="checkbox" id="gf-show-society" checked style="accent-color:var(--purple);width:14px;height:14px">
+          நிறுவனம்
+        </label>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:10px">
+      💡 எந்த node-ஐயும் க்ளிக் செய்தால் அந்த கடைகளின் பட்டியல் தெரியும்
+    </div>
+    <div style="overflow-x:auto;background:var(--bg2);border-radius:10px;border:1px solid var(--border);padding:12px">
+      <svg id="${flowId}" style="display:block;min-width:300px"></svg>
+    </div>`;
+
+  contentEl.appendChild(flowSection);
+
+  // Attach toggle listeners & draw
+  requestAnimationFrame(() => {
+    drawSVG();
+    ['gf-show-taluk','gf-show-block','gf-show-society'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', drawSVG);
+    });
+  });
 }
 
 // ── SHOP LIST MODAL (from clickable detail boxes) ─────────────
