@@ -1551,19 +1551,19 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
   };
 
   // ── build data tree ────────────────────────────────────────
-  function buildHierarchy() {
-    // taluk → block (unique per taluk) → society → count
+  // Returns taluk→block→society→count always.
+  // When showTaluk=false we collapse everything under a single pseudo-taluk '___all___'
+  // so block names merge across taluks.
+  function buildHierarchy(showTaluk) {
     const taluks = {};
     rows.forEach(r => {
-      const tk = g(r,'taluk') || '—';
-      const bl = g(r,'block') || '—';
+      const tk = showTaluk ? (g(r,'taluk') || '—') : '___all___';
+      const bl = g(r,'block')   || '—';
       const sc = g(r,'society') || '—';
       if (!taluks[tk]) taluks[tk] = {};
-      // key = taluk+'\x00'+block so same block name under diff taluks stays separate
-      const blKey = bl;
-      if (!taluks[tk][blKey]) taluks[tk][blKey] = {};
-      if (!taluks[tk][blKey][sc]) taluks[tk][blKey][sc] = 0;
-      taluks[tk][blKey][sc]++;
+      if (!taluks[tk][bl]) taluks[tk][bl] = {};
+      if (!taluks[tk][bl][sc]) taluks[tk][bl][sc] = 0;
+      taluks[tk][bl][sc]++;
     });
     return taluks;
   }
@@ -1577,7 +1577,7 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
     const svg = document.getElementById(flowId);
     if (!svg) return;
 
-    const taluks = buildHierarchy();
+    const taluks = buildHierarchy(showTaluk);
     const talukKeys = Object.keys(taluks).sort((a,b) => a.localeCompare(b,'ta'));
 
     // column x positions
@@ -1611,7 +1611,7 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
           const cnt = taluks[tk][bl][sc];
           let y = leafY;
           if (deepLevel === 'society') leafY += NODE_H + VGAP;
-          return { name: sc, y, count: cnt, serial: 'S' + socIdx };
+          return { name: sc, y, count: cnt, serial: String(socIdx) };
         });
         const blockCount = Object.values(taluks[tk][bl]).reduce((s,v)=>s+v,0);
         let y;
@@ -1620,7 +1620,7 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
         } else {
           y = socMeta.length ? (socMeta[0].y + socMeta[socMeta.length-1].y) / 2 : leafY;
         }
-        return { name: bl, y, count: blockCount, socs: socMeta, serial: 'B' + blockIdx };
+        return { name: bl, y, count: blockCount, socs: socMeta, serial: String(blockIdx) };
       });
       const talukCount = blockMeta.reduce((s,b)=>s+b.count,0);
       let y;
@@ -1630,7 +1630,7 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
         const firstLeaf = blockMeta[0], lastLeaf = blockMeta[blockMeta.length-1];
         y = firstLeaf && lastLeaf ? (firstLeaf.y + lastLeaf.y) / 2 : leafY;
       }
-      return { name: tk, y, count: talukCount, blocks: blockMeta, serial: 'T' + talukIdx };
+      return { name: tk, y, count: talukCount, blocks: blockMeta, serial: String(talukIdx) };
     });
 
     const godownMidY = talukMeta.length
@@ -1639,26 +1639,30 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
     const totalH = Math.max(leafY + 40, godownMidY + NODE_H + 40);
 
     // ── SVG helpers ──
-    function badge(x, y, label, color) {
-      const bw = 26, bh = 14;
-      return `<rect x="${x-1}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${color}22" stroke="${color}" stroke-width="1"/>
-              <text x="${x+bw/2-1}" y="${y+bh/2}" text-anchor="middle" dominant-baseline="middle"
-                fill="${color}" font-size="8" font-family="'DM Mono',monospace" font-weight="700">${label}</text>`;
-    }
-
     function nodeRect(x, y, w, cfg, mainLabel, subLabel, serial) {
-      const mx = x + w/2;
-      // badge top-left
-      const bdg = serial ? badge(x+3, y-7, serial, cfg.badge) : '';
-      // main label: truncate if too long
-      const maxChars = Math.floor(w / 7.5);
+      // serial badge sits INSIDE the node on the left edge
+      const badgeW = serial ? 18 : 0;
+      const badgePad = serial ? 4 : 0;
+      // text area starts after badge
+      const textX = x + badgeW + badgePad + (w - badgeW - badgePad) / 2;
+      // truncate label to fit remaining width
+      const availW = w - badgeW - badgePad - 8;
+      const maxChars = Math.floor(availW / 7.2);
       const lbl = mainLabel.length > maxChars ? mainLabel.slice(0, maxChars-1) + '…' : mainLabel;
-      return `${bdg}
+
+      const badgeSVG = serial ? `
+        <rect x="${x+2}" y="${y+4}" width="${badgeW}" height="${NODE_H-8}" rx="3"
+          fill="${cfg.badge}33" stroke="${cfg.badge}" stroke-width="1"/>
+        <text x="${x+2+badgeW/2}" y="${y+NODE_H/2}" text-anchor="middle" dominant-baseline="middle"
+          fill="${cfg.badge}" font-size="9" font-family="'DM Mono',monospace" font-weight="700">${serial}</text>` : '';
+
+      return `
         <rect x="${x}" y="${y}" width="${w}" height="${NODE_H}" rx="${NODE_R}" ry="${NODE_R}"
           fill="${cfg.fill}" stroke="${cfg.stroke}" stroke-width="1.5"/>
-        <text x="${mx}" y="${y + NODE_H/2 - (subLabel?4:0)}" text-anchor="middle" dominant-baseline="middle"
+        ${badgeSVG}
+        <text x="${textX}" y="${y + NODE_H/2 - (subLabel?4:0)}" text-anchor="middle" dominant-baseline="middle"
           fill="${cfg.text}" font-size="11" font-family="'Noto Sans Tamil',sans-serif" font-weight="600">${lbl}</text>
-        ${subLabel ? `<text x="${mx}" y="${y+NODE_H/2+9}" text-anchor="middle" dominant-baseline="middle"
+        ${subLabel ? `<text x="${textX}" y="${y+NODE_H/2+9}" text-anchor="middle" dominant-baseline="middle"
           fill="${cfg.stroke}" font-size="9" font-family="'DM Mono',monospace">${subLabel}</text>` : ''}`;
     }
 
@@ -1692,42 +1696,55 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
     talukMeta.forEach(tk => {
       const godownRightX = gx + GODOWN_W;
       const godownMidPtY = gy + NODE_H/2;
+      const isPseudo = tk.name === '___all___'; // merged-block pseudo taluk when taluk hidden
 
-      if (showTaluk) {
+      // source point: taluk node right edge, or godown right edge if no taluk shown
+      let srcX, srcY;
+      if (showTaluk && !isPseudo) {
         const tx = colX.taluk, ty = tk.y;
         body += edge(godownRightX, godownMidPtY, tx, ty + NODE_H/2);
         body += nodeRect(tx, ty, TALUK_W, C.taluk, fmtTaluk(tk.name), tk.count + ' கடைகள்', tk.serial);
         body += clickRect({godown:godownName, taluk:tk.name, title:'வட்டம்: '+fmtTaluk(tk.name)}, tx, ty, TALUK_W);
+        srcX = colX.taluk + TALUK_W;
+        srcY = ty + NODE_H/2;
+      } else {
+        srcX = godownRightX;
+        srcY = godownMidPtY;
       }
+
+      // filter taluk for clickRect: omit taluk key when not shown (merged)
+      const tkFilter = (showTaluk && !isPseudo) ? tk.name : null;
 
       if (showBlock) {
         tk.blocks.forEach(bl => {
           const bx = colX.block, by = bl.y;
-          const srcX = showTaluk ? (colX.taluk + TALUK_W) : godownRightX;
-          const srcY = showTaluk ? (tk.y + NODE_H/2)      : godownMidPtY;
           body += edge(srcX, srcY, bx, by + NODE_H/2);
           body += nodeRect(bx, by, BLOCK_W, C.block, bl.name, bl.count + ' கடைகள்', bl.serial);
-          body += clickRect({godown:godownName, taluk:tk.name, block:bl.name, title:'ஒன்றியம்: '+bl.name}, bx, by, BLOCK_W);
+          const blClickF = {godown:godownName, block:bl.name, title:'ஒன்றியம்: '+bl.name};
+          if (tkFilter) blClickF.taluk = tkFilter;
+          body += clickRect(blClickF, bx, by, BLOCK_W);
 
           if (showSociety) {
             bl.socs.forEach(sc => {
               const sx = colX.society, sy = sc.y;
               body += edge(bx + BLOCK_W, by + NODE_H/2, sx, sy + NODE_H/2);
               body += nodeRect(sx, sy, SOC_W, C.society, sc.name, sc.count + ' கடைகள்', sc.serial);
-              body += clickRect({godown:godownName, taluk:tk.name, block:bl.name, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W);
+              const scClickF = {godown:godownName, block:bl.name, society:sc.name, title:'நிறுவனம்: '+sc.name};
+              if (tkFilter) scClickF.taluk = tkFilter;
+              body += clickRect(scClickF, sx, sy, SOC_W);
             });
           }
         });
       } else if (showSociety) {
-        // taluk (or godown) → society directly
+        // godown/taluk → society directly
         tk.blocks.forEach(bl => {
           bl.socs.forEach(sc => {
             const sx = colX.society, sy = sc.y;
-            const srcX = showTaluk ? (colX.taluk + TALUK_W) : godownRightX;
-            const srcY = showTaluk ? (tk.y + NODE_H/2)      : godownMidPtY;
             body += edge(srcX, srcY, sx, sy + NODE_H/2);
             body += nodeRect(sx, sy, SOC_W, C.society, sc.name, sc.count + ' கடைகள்', sc.serial);
-            body += clickRect({godown:godownName, taluk:tk.name, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W);
+            const scClickF = {godown:godownName, society:sc.name, title:'நிறுவனம்: '+sc.name};
+            if (tkFilter) scClickF.taluk = tkFilter;
+            body += clickRect(scClickF, sx, sy, SOC_W);
           });
         });
       }
