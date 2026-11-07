@@ -1533,151 +1533,133 @@ function renderOverviewDetail(dimKey, value) {
 // ── GODOWN FLOW CHART ─────────────────────────────────────────
 // Shows Godown → Taluk → Block → Society tree with toggle controls
 function renderGodownFlowChart(godownName, rows, contentEl) {
-  // Build toggle controls and SVG tree below the existing stats content
-  const flowId = 'godown-flow-' + Date.now();
+  const flowId   = 'godown-flow-' + Date.now();
+  const scaleId  = 'gf-scale-' + Date.now();
+  const scaleLId = 'gf-scale-lbl-' + Date.now();
 
-  // Collect hierarchy data
-  function buildTree() {
-    const showTaluk   = document.getElementById('gf-show-taluk')?.checked  !== false;
-    const showBlock   = document.getElementById('gf-show-block')?.checked  !== false;
-    const showSociety = document.getElementById('gf-show-society')?.checked !== false;
+  // ── layout constants ───────────────────────────────────────
+  const GODOWN_W = 164, NODE_H = 36, NODE_R = 7;
+  const TALUK_W  = 152, BLOCK_W = 152, SOC_W = 164;
+  const HGAP = 52, VGAP = 8;
+  const HDR_Y = 18, TOP_PAD = 50;
 
-    // taluk → block → society → shops[]
+  const C = {
+    godown:  { fill:'#1e3a5f', stroke:'#4f8ef7', text:'#93c5fd', badge:'#4f8ef7' },
+    taluk:   { fill:'#1a3a2a', stroke:'#2dd4bf', text:'#5eead4', badge:'#2dd4bf' },
+    block:   { fill:'#2d2000', stroke:'#f5a623', text:'#fcd34d', badge:'#f5a623' },
+    society: { fill:'#2a1a2e', stroke:'#a78bfa', text:'#c4b5fd', badge:'#a78bfa' },
+  };
+
+  // ── build data tree ────────────────────────────────────────
+  function buildHierarchy() {
+    // taluk → block (unique per taluk) → society → count
     const taluks = {};
     rows.forEach(r => {
       const tk = g(r,'taluk') || '—';
       const bl = g(r,'block') || '—';
       const sc = g(r,'society') || '—';
       if (!taluks[tk]) taluks[tk] = {};
-      if (!taluks[tk][bl]) taluks[tk][bl] = {};
-      if (!taluks[tk][bl][sc]) taluks[tk][bl][sc] = 0;
-      taluks[tk][bl][sc]++;
+      // key = taluk+'\x00'+block so same block name under diff taluks stays separate
+      const blKey = bl;
+      if (!taluks[tk][blKey]) taluks[tk][blKey] = {};
+      if (!taluks[tk][blKey][sc]) taluks[tk][blKey][sc] = 0;
+      taluks[tk][blKey][sc]++;
     });
-
-    return { taluks, showTaluk, showBlock, showSociety };
+    return taluks;
   }
 
+  // ── draw ───────────────────────────────────────────────────
   function drawSVG() {
-    const { taluks, showTaluk, showBlock, showSociety } = buildTree();
+    const showTaluk   = document.getElementById('gf-show-taluk')?.checked !== false;
+    const showBlock   = document.getElementById('gf-show-block')?.checked !== false;
+    const showSociety = document.getElementById('gf-show-society')?.checked !== false;
+    const scale       = parseFloat(document.getElementById(scaleId)?.value || 1);
     const svg = document.getElementById(flowId);
     if (!svg) return;
 
-    // Colors
-    const C = {
-      godown:  { fill:'#1e3a5f', stroke:'#4f8ef7', text:'#93c5fd' },
-      taluk:   { fill:'#1a3a2a', stroke:'#2dd4bf', text:'#5eead4' },
-      block:   { fill:'#2a2a1a', stroke:'#f5a623', text:'#fcd34d' },
-      society: { fill:'#2a1a2e', stroke:'#a78bfa', text:'#c4b5fd' },
-    };
+    const taluks = buildHierarchy();
+    const talukKeys = Object.keys(taluks).sort((a,b) => a.localeCompare(b,'ta'));
 
-    // Layout constants
-    const GODOWN_W = 160, NODE_H = 32, NODE_R = 7;
-    const TALUK_W = 150, BLOCK_W = 150, SOC_W = 160;
-    const HGAP = 60; // horizontal gap between columns
-    const VGAP = 10; // vertical gap between sibling nodes
+    // column x positions
+    let colX = { godown: 16 };
+    let cx = 16 + GODOWN_W + HGAP;
+    if (showTaluk)   { colX.taluk   = cx; cx += TALUK_W  + HGAP; }
+    if (showBlock)   { colX.block   = cx; cx += BLOCK_W  + HGAP; }
+    if (showSociety) { colX.society = cx; cx += SOC_W    + HGAP; }
+    const totalW = cx;
 
-    // Flatten visible levels to compute positions
-    const talukKeys = Object.keys(taluks).sort((a,b)=>a.localeCompare(b,'ta'));
+    // deepest visible level
+    const deepLevel = showSociety ? 'society'
+                    : showBlock   ? 'block'
+                    : showTaluk   ? 'taluk'
+                    : 'godown';
 
-    // Build node list with y positions
-    let nodes = []; // {id, label, level, x, y, w, parent, count}
-    let edges = []; // {x1,y1,x2,y2}
+    // ── layout pass: assign y to leaf nodes, centre parents ──
+    let leafY = TOP_PAD;
+    let talukIdx = 0;
 
-    // Column x positions depend on which levels are shown
-    let colX = { godown: 20 };
-    let col = 20 + GODOWN_W + HGAP;
-    if (showTaluk)   { colX.taluk   = col; col += TALUK_W + HGAP; }
-    if (showBlock)   { colX.block   = col; col += BLOCK_W + HGAP; }
-    if (showSociety) { colX.society = col; col += SOC_W  + HGAP; }
-
-    const totalW = col;
-
-    // --- First pass: count leaf rows for each node to size Y ---
-    // We do a simple iterative layout: assign Y by order of appearance
-
-    let currentY = 60; // top padding
-    const godownY = currentY;
-    const godownCount = rows.length;
-    const godownId = 'gdn';
-
-    // We'll collect all block and society nodes to find total height
-    // Simple approach: walk tree, assign Y to each visible node
-    const allNodes = [];
-    const allEdges = [];
-
-    // Godown node placed at top, vertically centered later
-    // First compute all leaf heights, then centre parents
-
-    // ---- Build structured list ----
-    // For each taluk → for each block → for each society → leaf node
-    // Assign Y sequentially to the deepest visible level, then centre parents
-
-    // Determine deepest visible level
-    const deepLevel = showSociety ? 'society' : (showBlock ? 'block' : (showTaluk ? 'taluk' : 'godown'));
-
-    let leafY = 60;
-    const talukMeta = [];
-
-    talukKeys.forEach(tk => {
+    const talukMeta = talukKeys.map(tk => {
+      talukIdx++;
       const blockKeys = Object.keys(taluks[tk]).sort(cmpBlock);
-      const talukStart = leafY;
-      const blockMeta = [];
-
-      blockKeys.forEach(bl => {
-        const socKeys = Object.keys(taluks[tk][bl]).sort((a,b)=>a.localeCompare(b,'ta'));
-        const blockStart = leafY;
-        const socMeta = [];
-
-        socKeys.forEach(sc => {
+      let blockIdx = 0;
+      const blockMeta = blockKeys.map(bl => {
+        blockIdx++;
+        const socKeys = Object.keys(taluks[tk][bl]).sort((a,b) => a.localeCompare(b,'ta'));
+        let socIdx = 0;
+        const socMeta = socKeys.map(sc => {
+          socIdx++;
           const cnt = taluks[tk][bl][sc];
-          if (deepLevel === 'society') {
-            socMeta.push({ name: sc, y: leafY, count: cnt });
-            leafY += NODE_H + VGAP;
-          }
+          let y = leafY;
+          if (deepLevel === 'society') leafY += NODE_H + VGAP;
+          return { name: sc, y, count: cnt, serial: 'S' + socIdx };
         });
-
         const blockCount = Object.values(taluks[tk][bl]).reduce((s,v)=>s+v,0);
+        let y;
         if (deepLevel === 'block') {
-          blockMeta.push({ name: bl, y: leafY, count: blockCount, socs: socMeta });
-          leafY += NODE_H + VGAP;
-        } else if (deepLevel === 'society') {
-          const blockMid = socMeta.length
-            ? (socMeta[0].y + socMeta[socMeta.length-1].y) / 2
-            : leafY;
-          blockMeta.push({ name: bl, y: blockMid, count: blockCount, socs: socMeta });
+          y = leafY; leafY += NODE_H + VGAP;
+        } else {
+          y = socMeta.length ? (socMeta[0].y + socMeta[socMeta.length-1].y) / 2 : leafY;
         }
+        return { name: bl, y, count: blockCount, socs: socMeta, serial: 'B' + blockIdx };
       });
-
-      const talukCount = Object.values(taluks[tk]).reduce((s,v)=>s+Object.values(v).reduce((a,b)=>a+b,0),0);
+      const talukCount = blockMeta.reduce((s,b)=>s+b.count,0);
+      let y;
       if (deepLevel === 'taluk') {
-        talukMeta.push({ name: tk, y: leafY, count: talukCount, blocks: blockMeta });
-        leafY += NODE_H + VGAP;
+        y = leafY; leafY += NODE_H + VGAP;
       } else {
-        const firstLeaf = blockMeta[0];
-        const lastLeaf  = blockMeta[blockMeta.length-1];
-        const talukMid  = firstLeaf && lastLeaf
-          ? (firstLeaf.y + lastLeaf.y) / 2
-          : leafY;
-        talukMeta.push({ name: tk, y: talukMid, count: talukCount, blocks: blockMeta });
+        const firstLeaf = blockMeta[0], lastLeaf = blockMeta[blockMeta.length-1];
+        y = firstLeaf && lastLeaf ? (firstLeaf.y + lastLeaf.y) / 2 : leafY;
       }
+      return { name: tk, y, count: talukCount, blocks: blockMeta, serial: 'T' + talukIdx };
     });
 
-    const godownMid = talukMeta.length
+    const godownMidY = talukMeta.length
       ? (talukMeta[0].y + talukMeta[talukMeta.length-1].y) / 2
-      : 80;
+      : TOP_PAD;
+    const totalH = Math.max(leafY + 40, godownMidY + NODE_H + 40);
 
-    const totalH = leafY + 40;
+    // ── SVG helpers ──
+    function badge(x, y, label, color) {
+      const bw = 26, bh = 14;
+      return `<rect x="${x-1}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${color}22" stroke="${color}" stroke-width="1"/>
+              <text x="${x+bw/2-1}" y="${y+bh/2}" text-anchor="middle" dominant-baseline="middle"
+                fill="${color}" font-size="8" font-family="'DM Mono',monospace" font-weight="700">${label}</text>`;
+    }
 
-    // ---- Draw SVG ----
-    function nodeRect(x, y, w, cfg, label, sublabel) {
-      const cx = x + w/2, cy = y + NODE_H/2;
-      return `
+    function nodeRect(x, y, w, cfg, mainLabel, subLabel, serial) {
+      const mx = x + w/2;
+      // badge top-left
+      const bdg = serial ? badge(x+3, y-7, serial, cfg.badge) : '';
+      // main label: truncate if too long
+      const maxChars = Math.floor(w / 7.5);
+      const lbl = mainLabel.length > maxChars ? mainLabel.slice(0, maxChars-1) + '…' : mainLabel;
+      return `${bdg}
         <rect x="${x}" y="${y}" width="${w}" height="${NODE_H}" rx="${NODE_R}" ry="${NODE_R}"
           fill="${cfg.fill}" stroke="${cfg.stroke}" stroke-width="1.5"/>
-        <text x="${cx}" y="${cy - (sublabel?4:0)}" text-anchor="middle" dominant-baseline="middle"
-          fill="${cfg.text}" font-size="11" font-family="'Noto Sans Tamil',sans-serif" font-weight="600">${label}</text>
-        ${sublabel ? `<text x="${cx}" y="${cy+9}" text-anchor="middle" dominant-baseline="middle"
-          fill="${cfg.stroke}" font-size="9" font-family="'DM Mono',monospace">${sublabel}</text>` : ''}`;
+        <text x="${mx}" y="${y + NODE_H/2 - (subLabel?4:0)}" text-anchor="middle" dominant-baseline="middle"
+          fill="${cfg.text}" font-size="11" font-family="'Noto Sans Tamil',sans-serif" font-weight="600">${lbl}</text>
+        ${subLabel ? `<text x="${mx}" y="${y+NODE_H/2+9}" text-anchor="middle" dominant-baseline="middle"
+          fill="${cfg.stroke}" font-size="9" font-family="'DM Mono',monospace">${subLabel}</text>` : ''}`;
     }
 
     function edge(x1,y1,x2,y2) {
@@ -1686,124 +1668,132 @@ function renderGodownFlowChart(godownName, rows, contentEl) {
         fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>`;
     }
 
-    function clickable(filter, x, y, w, h, label) {
-      const f = JSON.stringify(filter).replace(/"/g,'&quot;');
-      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${NODE_R}" ry="${NODE_R}"
+    function clickRect(filter, x, y, w) {
+      return `<rect x="${x}" y="${y}" width="${w}" height="${NODE_H}" rx="${NODE_R}" ry="${NODE_R}"
         fill="transparent" stroke="none" style="cursor:pointer"
         onclick='showShopList(${JSON.stringify(filter)})'
-        title="${label} — கடை விவரம் காண க்ளிக் செய்யவும்"/>`;
+        title="${(filter.title||'')} — கடை விவரம் காண க்ளிக் செய்யவும்"/>`;
     }
 
-    let svgBody = '';
+    function colHdr(x, w, label, color) {
+      return `<text x="${x+w/2}" y="${HDR_Y}" text-anchor="middle" fill="${color}"
+        font-size="10" font-family="'DM Mono',monospace" font-weight="700" letter-spacing="0.06em"
+        text-decoration="underline">${label}</text>`;
+    }
+
+    // ── build SVG body ──
+    let body = '';
 
     // Godown node
-    const gx = colX.godown, gy = godownMid;
-    svgBody += nodeRect(gx, gy, GODOWN_W, C.godown, godownName, godownCount + ' கடைகள்');
-    svgBody += clickable({godown: godownName, title:'கிடங்கு: '+godownName}, gx, gy, GODOWN_W, NODE_H, godownName);
+    const gx = colX.godown, gy = godownMidY;
+    body += nodeRect(gx, gy, GODOWN_W, C.godown, godownName, rows.length + ' கடைகள்', null);
+    body += clickRect({godown:godownName, title:'கிடங்கு: '+godownName}, gx, gy, GODOWN_W);
 
     talukMeta.forEach(tk => {
-      let prevRight = gx + GODOWN_W;
-      let prevMidY  = godownMid + NODE_H/2;
+      const godownRightX = gx + GODOWN_W;
+      const godownMidPtY = gy + NODE_H/2;
 
       if (showTaluk) {
         const tx = colX.taluk, ty = tk.y;
-        svgBody += edge(prevRight, prevMidY, tx, ty + NODE_H/2);
-        svgBody += nodeRect(tx, ty, TALUK_W, C.taluk, fmtTaluk(tk.name), tk.count + ' கடைகள்');
-        svgBody += clickable({godown:godownName, taluk:tk.name, title:'வட்டம்: '+fmtTaluk(tk.name)}, tx, ty, TALUK_W, NODE_H, fmtTaluk(tk.name));
-        prevRight = tx + TALUK_W;
-        prevMidY  = ty + NODE_H/2;
+        body += edge(godownRightX, godownMidPtY, tx, ty + NODE_H/2);
+        body += nodeRect(tx, ty, TALUK_W, C.taluk, fmtTaluk(tk.name), tk.count + ' கடைகள்', tk.serial);
+        body += clickRect({godown:godownName, taluk:tk.name, title:'வட்டம்: '+fmtTaluk(tk.name)}, tx, ty, TALUK_W);
       }
 
       if (showBlock) {
         tk.blocks.forEach(bl => {
           const bx = colX.block, by = bl.y;
-          const srcY = showTaluk ? (tk.y + NODE_H/2) : prevMidY;
-          const srcX = showTaluk ? (colX.taluk + TALUK_W) : prevRight;
-          svgBody += edge(srcX, srcY, bx, by + NODE_H/2);
-          svgBody += nodeRect(bx, by, BLOCK_W, C.block, bl.name, bl.count + ' கடைகள்');
-          svgBody += clickable({godown:godownName, block:bl.name, title:'ஒன்றியம்: '+bl.name}, bx, by, BLOCK_W, NODE_H, bl.name);
+          const srcX = showTaluk ? (colX.taluk + TALUK_W) : godownRightX;
+          const srcY = showTaluk ? (tk.y + NODE_H/2)      : godownMidPtY;
+          body += edge(srcX, srcY, bx, by + NODE_H/2);
+          body += nodeRect(bx, by, BLOCK_W, C.block, bl.name, bl.count + ' கடைகள்', bl.serial);
+          body += clickRect({godown:godownName, taluk:tk.name, block:bl.name, title:'ஒன்றியம்: '+bl.name}, bx, by, BLOCK_W);
 
           if (showSociety) {
             bl.socs.forEach(sc => {
               const sx = colX.society, sy = sc.y;
-              svgBody += edge(bx + BLOCK_W, by + NODE_H/2, sx, sy + NODE_H/2);
-              svgBody += nodeRect(sx, sy, SOC_W, C.society, sc.name.length > 18 ? sc.name.slice(0,17)+'…' : sc.name, sc.count + ' கடைகள்');
-              svgBody += clickable({godown:godownName, block:bl.name, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W, NODE_H, sc.name);
+              body += edge(bx + BLOCK_W, by + NODE_H/2, sx, sy + NODE_H/2);
+              body += nodeRect(sx, sy, SOC_W, C.society, sc.name, sc.count + ' கடைகள்', sc.serial);
+              body += clickRect({godown:godownName, taluk:tk.name, block:bl.name, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W);
             });
           }
         });
-      } else if (showSociety && !showBlock) {
-        // taluk → society directly
+      } else if (showSociety) {
+        // taluk (or godown) → society directly
         tk.blocks.forEach(bl => {
           bl.socs.forEach(sc => {
             const sx = colX.society, sy = sc.y;
-            const srcX = showTaluk ? (colX.taluk + TALUK_W) : (gx + GODOWN_W);
-            const srcY = showTaluk ? (tk.y + NODE_H/2) : prevMidY;
-            svgBody += edge(srcX, srcY, sx, sy + NODE_H/2);
-            svgBody += nodeRect(sx, sy, SOC_W, C.society, sc.name.length > 18 ? sc.name.slice(0,17)+'…' : sc.name, sc.count + ' கடைகள்');
-            svgBody += clickable({godown:godownName, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W, NODE_H, sc.name);
+            const srcX = showTaluk ? (colX.taluk + TALUK_W) : godownRightX;
+            const srcY = showTaluk ? (tk.y + NODE_H/2)      : godownMidPtY;
+            body += edge(srcX, srcY, sx, sy + NODE_H/2);
+            body += nodeRect(sx, sy, SOC_W, C.society, sc.name, sc.count + ' கடைகள்', sc.serial);
+            body += clickRect({godown:godownName, taluk:tk.name, society:sc.name, title:'நிறுவனம்: '+sc.name}, sx, sy, SOC_W);
           });
         });
       }
     });
 
-    // Column headers
-    const hdrY = 20;
-    function colHdr(x, w, label, color) {
-      return `<text x="${x+w/2}" y="${hdrY}" text-anchor="middle" fill="${color}"
-        font-size="10" font-family="'DM Mono',monospace" font-weight="700" letter-spacing="0.08em">${label}</text>`;
-    }
-    svgBody += colHdr(colX.godown, GODOWN_W, 'கிடங்கு', C.godown.stroke);
-    if (showTaluk)   svgBody += colHdr(colX.taluk,   TALUK_W, 'வட்டம்',    C.taluk.stroke);
-    if (showBlock)   svgBody += colHdr(colX.block,   BLOCK_W, 'ஒன்றியம்',  C.block.stroke);
-    if (showSociety) svgBody += colHdr(colX.society, SOC_W,   'நிறுவனம்',  C.society.stroke);
+    // column headers (drawn last so they sit on top)
+    body += colHdr(colX.godown, GODOWN_W, 'கிடங்கு', C.godown.stroke);
+    if (showTaluk)   body += colHdr(colX.taluk,   TALUK_W, 'வட்டம்',   C.taluk.stroke);
+    if (showBlock)   body += colHdr(colX.block,   BLOCK_W, 'ஒன்றியம்', C.block.stroke);
+    if (showSociety) body += colHdr(colX.society, SOC_W,   'நிறுவனம்', C.society.stroke);
 
+    // apply scale via viewBox shrink/expand
+    const scaledH = Math.round(totalH * scale);
     svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
-    svg.setAttribute('height', totalH);
+    svg.style.height = scaledH + 'px';
     svg.setAttribute('width', '100%');
-    svg.innerHTML = svgBody;
+    svg.innerHTML = body;
+
+    // update label
+    const lbl = document.getElementById(scaleLId);
+    if (lbl) lbl.textContent = Math.round(scale * 100) + '%';
   }
 
-  // Inject flow-chart section into the content element
+  // ── inject section HTML ──
   const flowSection = document.createElement('div');
   flowSection.id = 'godown-flow-section';
   flowSection.style.cssText = 'margin-top:20px;border-top:1px solid var(--border);padding-top:16px';
   flowSection.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em">
-        📦 கிடங்கு → நிறுவன வரைபடம் (Flow Chart)
+        📦 கிடங்கு → நிறுவன வரைபடம்
       </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--teal);cursor:pointer">
-          <input type="checkbox" id="gf-show-taluk" checked style="accent-color:var(--teal);width:14px;height:14px">
-          வட்டம்
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#5eead4;cursor:pointer">
+          <input type="checkbox" id="gf-show-taluk" checked style="accent-color:#2dd4bf;width:13px;height:13px"> வட்டம்
         </label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--amber);cursor:pointer">
-          <input type="checkbox" id="gf-show-block" checked style="accent-color:var(--amber);width:14px;height:14px">
-          ஒன்றியம்
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#fcd34d;cursor:pointer">
+          <input type="checkbox" id="gf-show-block" checked style="accent-color:#f5a623;width:13px;height:13px"> ஒன்றியம்
         </label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--purple);cursor:pointer">
-          <input type="checkbox" id="gf-show-society" checked style="accent-color:var(--purple);width:14px;height:14px">
-          நிறுவனம்
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#c4b5fd;cursor:pointer">
+          <input type="checkbox" id="gf-show-society" checked style="accent-color:#a78bfa;width:13px;height:13px"> நிறுவனம்
         </label>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+          🔍 <input type="range" id="${scaleId}" min="0.3" max="1.5" step="0.05" value="1"
+            style="width:80px;accent-color:var(--blue);cursor:pointer">
+          <span id="${scaleLId}" style="font-family:'DM Mono',monospace;color:var(--blue);min-width:36px">100%</span>
+        </div>
       </div>
     </div>
     <div style="font-size:10px;color:var(--muted);margin-bottom:10px">
-      💡 எந்த node-ஐயும் க்ளிக் செய்தால் அந்த கடைகளின் பட்டியல் தெரியும்
+      💡 எந்த node-ஐயும் க்ளிக் செய்தால் கடைகள் பட்டியல் — badge: T=வட்டம் B=ஒன்றியம் S=நிறுவனம்
     </div>
-    <div style="overflow-x:auto;background:var(--bg2);border-radius:10px;border:1px solid var(--border);padding:12px">
-      <svg id="${flowId}" style="display:block;min-width:300px"></svg>
+    <div style="overflow:auto;max-height:600px;background:var(--bg2);border-radius:10px;border:1px solid var(--border);padding:12px">
+      <svg id="${flowId}" style="display:block;min-width:260px"></svg>
     </div>`;
 
   contentEl.appendChild(flowSection);
 
-  // Attach toggle listeners & draw
   requestAnimationFrame(() => {
     drawSVG();
     ['gf-show-taluk','gf-show-block','gf-show-society'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', drawSVG);
     });
+    const scaleEl = document.getElementById(scaleId);
+    if (scaleEl) scaleEl.addEventListener('input', drawSVG);
   });
 }
 
