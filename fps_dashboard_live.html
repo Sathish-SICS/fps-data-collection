@@ -6468,6 +6468,745 @@ function cmpWriteWb(sheets, fname){
   XLSX.writeFile(wb, 'FPS_'+fname+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// GLOBAL COMMAND PALETTE SEARCH
+// ══════════════════════════════════════════════════════════════
+(function() {
+
+  // ── styles ──────────────────────────────────────────────────
+  const style = document.createElement('style');
+  style.textContent = `
+    #gsp-fab {
+      position:fixed;bottom:22px;right:18px;z-index:3000;
+      display:flex;align-items:center;gap:8px;
+      background:linear-gradient(135deg,#1e3a5f,#2a1a2e);
+      border:1.5px solid #4f8ef7;border-radius:28px;
+      padding:10px 16px 10px 12px;cursor:pointer;
+      box-shadow:0 4px 24px #0008;transition:transform .15s,box-shadow .15s;
+      font-family:inherit;color:#93c5fd;font-size:12px;font-weight:700;
+      user-select:none;
+    }
+    #gsp-fab:hover{transform:scale(1.06);box-shadow:0 6px 32px #4f8ef755;}
+    #gsp-fab .gsp-kbd{
+      font-size:9px;background:#ffffff14;border:1px solid #4f8ef755;
+      border-radius:4px;padding:1px 5px;color:#5eead4;font-family:'DM Mono',monospace;
+    }
+    #gsp-overlay {
+      display:none;position:fixed;inset:0;z-index:4000;
+      background:#000a;backdrop-filter:blur(4px);
+      align-items:flex-start;justify-content:center;padding-top:60px;
+    }
+    #gsp-overlay.open{display:flex;}
+    #gsp-box {
+      background:var(--bg2,#1a1f2e);border:1.5px solid #4f8ef7;
+      border-radius:16px;width:min(680px,96vw);
+      box-shadow:0 24px 80px #000c;overflow:hidden;
+      display:flex;flex-direction:column;max-height:75vh;
+    }
+    #gsp-header{
+      display:flex;align-items:center;gap:10px;
+      padding:14px 16px;border-bottom:1px solid var(--border,#2a3045);
+    }
+    #gsp-icon{font-size:18px;flex-shrink:0;}
+    #gsp-input{
+      flex:1;background:transparent;border:none;outline:none;
+      font-size:15px;color:var(--text,#e2e8f0);font-family:inherit;
+      caret-color:#4f8ef7;
+    }
+    #gsp-input::placeholder{color:var(--muted,#64748b);}
+    #gsp-shortcut-hint{
+      font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;
+      white-space:nowrap;
+    }
+    #gsp-tokens{
+      display:flex;flex-wrap:wrap;gap:5px;
+      padding:8px 14px;border-bottom:1px solid var(--border,#2a3045);
+      min-height:34px;
+    }
+    .gsp-token{
+      display:flex;align-items:center;gap:4px;
+      padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;
+      cursor:pointer;border:1px solid;transition:opacity .1s;
+    }
+    .gsp-token:hover{opacity:.7;}
+    .gsp-token .gsp-tx{font-size:9px;opacity:.8;}
+    #gsp-results{overflow-y:auto;flex:1;}
+    .gsp-section-hdr{
+      padding:6px 16px 4px;font-size:10px;font-weight:700;
+      text-transform:uppercase;letter-spacing:.08em;
+      color:var(--muted);background:var(--bg3,#111827);
+      position:sticky;top:0;z-index:1;
+      display:flex;justify-content:space-between;align-items:center;
+    }
+    .gsp-row{
+      display:grid;grid-template-columns:auto 1fr auto;gap:8px;
+      align-items:center;padding:9px 16px;cursor:pointer;
+      border-left:3px solid transparent;transition:background .1s;
+    }
+    .gsp-row:hover,.gsp-row.gsp-active{
+      background:var(--bg3,#111827);border-left-color:#4f8ef7;
+    }
+    .gsp-row-icon{font-size:16px;width:22px;text-align:center;}
+    .gsp-row-main{min-width:0;}
+    .gsp-row-title{
+      font-size:13px;color:var(--text);font-weight:600;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .gsp-row-title mark{
+      background:#4f8ef755;color:#93c5fd;
+      border-radius:2px;padding:0 1px;font-weight:700;
+    }
+    .gsp-row-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+    .gsp-row-badge{
+      font-size:10px;padding:2px 7px;border-radius:10px;
+      font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;
+    }
+    #gsp-empty{
+      padding:40px 20px;text-align:center;
+      color:var(--muted);font-size:13px;
+    }
+    #gsp-footer{
+      padding:8px 16px;border-top:1px solid var(--border,#2a3045);
+      display:flex;gap:14px;flex-wrap:wrap;
+      font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;
+    }
+    .gsp-hint{display:flex;align-items:center;gap:4px;}
+    .gsp-k{
+      background:#ffffff14;border:1px solid #ffffff22;
+      border-radius:3px;padding:1px 5px;color:#93c5fd;font-size:9px;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // ── FAB button ───────────────────────────────────────────────
+  const fab = document.createElement('button');
+  fab.id = 'gsp-fab';
+  fab.innerHTML = `<span>🔍</span> தேடு <span class="gsp-kbd">Ctrl K</span>`;
+  fab.onclick = openPalette;
+  document.body.appendChild(fab);
+
+  // ── overlay HTML ─────────────────────────────────────────────
+  const overlay = document.createElement('div');
+  overlay.id = 'gsp-overlay';
+  overlay.innerHTML = `
+    <div id="gsp-box" role="dialog" aria-label="Search">
+      <div id="gsp-header">
+        <span id="gsp-icon">🔍</span>
+        <input id="gsp-input" autocomplete="off" spellcheck="false"
+          placeholder="கடை பெயர், குறியீடு, ஒன்றியம், வட்டம், விற்பனையாளர்..."/>
+        <span id="gsp-shortcut-hint">Esc மூடு</span>
+      </div>
+      <div id="gsp-tokens"></div>
+      <div id="gsp-results"></div>
+      <div id="gsp-footer">
+        <span class="gsp-hint"><span class="gsp-k">↑↓</span> Navigate</span>
+        <span class="gsp-hint"><span class="gsp-k">Enter</span> திற</span>
+        <span class="gsp-hint"><span class="gsp-k">Esc</span> மூடு</span>
+        <span class="gsp-hint"><span class="gsp-k">Tab</span> வடிகட்டி சேர்</span>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closePalette(); });
+
+  // ── state ────────────────────────────────────────────────────
+  let activeIdx = -1;
+  let activeFilters = {}; // {field: value} chips
+  let lastResults = [];
+
+  // field metadata
+  const FIELDS = [
+    { key:'shopcode',  label:'குறியீடு',    icon:'🏷️',  color:'#2dd4bf', bg:'#1a3a2a' },
+    { key:'shopname',  label:'கடை பெயர்',   icon:'🏪',  color:'#4f8ef7', bg:'#1e3a5f' },
+    { key:'seller',    label:'விற்பனையாளர்', icon:'👤',  color:'#a78bfa', bg:'#2a1a2e' },
+    { key:'society',   label:'நிறுவனம்',    icon:'🏢',  color:'#f5a623', bg:'#2d2000' },
+    { key:'block',     label:'ஒன்றியம்',    icon:'📍',  color:'#f5a623', bg:'#2d2000' },
+    { key:'taluk',     label:'வட்டம்',      icon:'🗺️',  color:'#5eead4', bg:'#1a3a2a' },
+    { key:'godown',    label:'கிடங்கு',     icon:'📦',  color:'#f472b6', bg:'#2d1a2e' },
+  ];
+  const fieldMap = Object.fromEntries(FIELDS.map(f => [f.key, f]));
+
+  // ── highlight helper ─────────────────────────────────────────
+  function hl(str, q) {
+    if (!str || !q) return str || '';
+    const s = String(str);
+    if (!q) return s;
+    const idx = s.toLowerCase().indexOf(q.toLowerCase());
+    if (idx < 0) return s;
+    return s.slice(0,idx) + '<mark>' + s.slice(idx,idx+q.length) + '</mark>' + s.slice(idx+q.length);
+  }
+
+  // ── search engine ────────────────────────────────────────────
+  function search(raw) {
+    if (typeof allData === 'undefined' || !allData.length) return [];
+    const q = raw.trim().toLowerCase();
+
+    // Apply chip filters first
+    const filterKeys = Object.keys(activeFilters);
+    let pool = allData.filter(r =>
+      filterKeys.every(k => (g(r,k)||'').toLowerCase() === activeFilters[k].toLowerCase())
+    );
+
+    if (!q) return buildGroupedResults(pool, '', 20);
+    return buildGroupedResults(pool, q, 50);
+  }
+
+  function scoreRow(r, q) {
+    // Returns {score, matchField} — higher = better match
+    for (const f of FIELDS) {
+      const val = (g(r, f.key) || '').toLowerCase();
+      if (!val) continue;
+      if (val === q) return { score: 100, matchField: f.key };
+      if (val.startsWith(q)) return { score: 80, matchField: f.key };
+      if (val.includes(q)) return { score: 60, matchField: f.key };
+    }
+    return null;
+  }
+
+  function buildGroupedResults(pool, q, limit) {
+    if (!q) {
+      // No query: show aggregated suggestions per field
+      const groups = [];
+      FIELDS.forEach(f => {
+        const vals = [...new Set(pool.map(r => g(r,f.key)).filter(Boolean))].slice(0,6);
+        if (vals.length) groups.push({ type:'field', field:f, vals,
+          count: vals.length });
+      });
+      return groups;
+    }
+
+    // Scored shop matches
+    const scored = [];
+    pool.forEach(r => {
+      const m = scoreRow(r, q);
+      if (m) scored.push({ r, ...m });
+    });
+    scored.sort((a,b) => b.score - a.score);
+
+    // Group by matchField
+    const byField = {};
+    scored.slice(0, limit).forEach(item => {
+      if (!byField[item.matchField]) byField[item.matchField] = [];
+      byField[item.matchField].push(item);
+    });
+
+    const groups = [];
+    FIELDS.forEach(f => {
+      const items = byField[f.key];
+      if (!items) return;
+      groups.push({ type:'shops', field:f, items, q });
+    });
+    return groups;
+  }
+
+  // ── render results ───────────────────────────────────────────
+  function renderTokens() {
+    const container = document.getElementById('gsp-tokens');
+    if (!container) return;
+    const keys = Object.keys(activeFilters);
+    if (!keys.length) {
+      container.innerHTML = `<span style="font-size:10px;color:var(--muted);align-self:center">வடிகட்டி: எதுவும் இல்லை — Tab அழுத்தி தேர்வில் filter சேர்க்கலாம்</span>`;
+      return;
+    }
+    container.innerHTML = keys.map(k => {
+      const f = fieldMap[k] || { label:k, color:'#888', bg:'#222', icon:'•' };
+      return `<span class="gsp-token" style="color:${f.color};background:${f.bg};border-color:${f.color}55"
+        onclick="gspRemoveFilter('${k}')" title="கிளிக் செய்து நீக்கவும்">
+        ${f.icon} <span class="gsp-tx">${f.label}:</span> ${activeFilters[k]} ✕
+      </span>`;
+    }).join('');
+  }
+
+  function renderResults(groups) {
+    lastResults = [];
+    const container = document.getElementById('gsp-results');
+    if (!container) return;
+    activeIdx = -1;
+
+    if (!groups.length) {
+      container.innerHTML = `<div id="gsp-empty">🔍 பொருத்தமான கடைகள் இல்லை</div>`;
+      return;
+    }
+
+    let html = '';
+    groups.forEach(grp => {
+      const f = grp.field;
+      if (grp.type === 'field') {
+        // Suggestion chips for browsing
+        html += `<div class="gsp-section-hdr"><span>${f.icon} ${f.label}</span>
+          <span style="color:${f.color}">${grp.count} values</span></div>`;
+        grp.vals.forEach(v => {
+          const idx = lastResults.length;
+          lastResults.push({ type:'filter', field:f.key, value:v });
+          html += `<div class="gsp-row" data-idx="${idx}">
+            <span class="gsp-row-icon">${f.icon}</span>
+            <div class="gsp-row-main">
+              <div class="gsp-row-title">${v}</div>
+              <div class="gsp-row-sub">${f.label} — க்ளிக் செய்து filter சேர்</div>
+            </div>
+            <span class="gsp-row-badge" style="background:${f.bg};color:${f.color};border:1px solid ${f.color}44">
+              ${f.label}
+            </span>
+          </div>`;
+        });
+      } else {
+        // Shop rows grouped by matched field
+        html += `<div class="gsp-section-hdr">
+          <span>${f.icon} ${f.label} வழி பொருத்தம்</span>
+          <span style="color:${f.color}">${grp.items.length} கடைகள்</span>
+        </div>`;
+        // For group-level fields (society/block/taluk/godown), show aggregate rows
+        const isGroupField = ['society','block','taluk','godown'].includes(f.key);
+        if (isGroupField) {
+          // Collapse items by their matched field value
+          const grouped = {};
+          grp.items.forEach(item => {
+            const val = g(item.r, f.key) || '—';
+            if (!grouped[val]) grouped[val] = [];
+            grouped[val].push(item.r);
+          });
+          Object.entries(grouped).slice(0,8).forEach(([val, groupRows]) => {
+            const idx = lastResults.length;
+            const blk = f.key === 'block' ? val : (g(groupRows[0],'block')||'');
+            lastResults.push({ type:'society', society: val, rows: groupRows, field: f.key, block: blk });
+            const cards = groupRows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+            html += `<div class="gsp-row" data-idx="${idx}">
+              <span class="gsp-row-icon">${f.icon}</span>
+              <div class="gsp-row-main">
+                <div class="gsp-row-title">${hl(val, grp.q)}</div>
+                <div class="gsp-row-sub">${groupRows.length} கடைகள் · ${cards.toLocaleString('en-IN')} அட்டைகள் · ${blk}</div>
+              </div>
+              <span class="gsp-row-badge" style="background:${f.bg};color:${f.color};border:1px solid ${f.color}44">
+                ${groupRows.length} கடைகள்
+              </span>
+            </div>`;
+          });
+        } else {
+        grp.items.slice(0,12).forEach(item => {
+          const r = item.r;
+          const code = g(r,'shopcode') || '';
+          const name = g(r,'shopname') || '';
+          const blk  = g(r,'block') || '';
+          const soc  = g(r,'society') || '';
+          const sel  = g(r,'seller') || '';
+          const idx  = lastResults.length;
+          lastResults.push({ type:'shop', r });
+
+          const titleVal = item.matchField === 'shopname' ? hl(name, grp.q)
+                         : item.matchField === 'shopcode' ? hl(code, grp.q)
+                         : item.matchField === 'seller'   ? hl(sel, grp.q)
+                         : name;
+          const subParts = [];
+          if (item.matchField !== 'shopcode') subParts.push(`<span style="color:var(--teal)">${hl(code,grp.q)}</span>`);
+          if (item.matchField !== 'block')    subParts.push(blk);
+          if (item.matchField !== 'society')  subParts.push(soc);
+          if (item.matchField === 'seller' && sel)   subParts.push(`👤 ${hl(sel,grp.q)}`);
+          else if (sel) subParts.push(`👤 ${sel}`);
+
+          html += `<div class="gsp-row" data-idx="${idx}">
+            <span class="gsp-row-icon">🏪</span>
+            <div class="gsp-row-main">
+              <div class="gsp-row-title">${titleVal}</div>
+              <div class="gsp-row-sub">${subParts.join(' · ')}</div>
+            </div>
+            <span class="gsp-row-badge" style="background:${f.bg};color:${f.color};border:1px solid ${f.color}44">
+              ${hl(String(g(r,item.matchField)||''), grp.q)}
+            </span>
+          </div>`;
+        });
+        }
+        if (grp.items.length > 12) {
+          html += `<div style="padding:6px 16px;font-size:10px;color:var(--muted);text-align:center">
+            + ${grp.items.length-12} மேலும் கடைகள் — தேடலை குறைக்கவும்</div>`;
+        }
+      }
+    });
+
+    container.innerHTML = html;
+
+    // attach click handlers
+    container.querySelectorAll('.gsp-row').forEach(row => {
+      row.addEventListener('click', () => activateResult(parseInt(row.dataset.idx)));
+      row.addEventListener('mouseenter', () => {
+        setActiveIdx(parseInt(row.dataset.idx));
+      });
+    });
+  }
+
+  // ── activate a result ────────────────────────────────────────
+  function activateResult(idx) {
+    const item = lastResults[idx];
+    if (!item) return;
+    if (item.type === 'filter') {
+      activeFilters[item.field] = item.value;
+      document.getElementById('gsp-input').value = '';
+      renderTokens();
+      triggerSearch('');
+    } else if (item.type === 'shop') {
+      showShopDetail(item.r);
+    } else if (item.type === 'society') {
+      showSocietyDetail(item.society, item.rows);
+    }
+  }
+
+  // ── SHOP DETAIL PANEL ─────────────────────────────────────────
+  function showShopDetail(r) {
+    const box = document.getElementById('gsp-box');
+    // Store previous results HTML to allow back navigation
+    const prevResultsHTML = document.getElementById('gsp-results').innerHTML;
+    const prevTokensHTML  = document.getElementById('gsp-tokens').innerHTML;
+    const prevInput       = document.getElementById('gsp-input').value;
+
+    // Find sibling shops in same society
+    const soc = g(r,'society'), blk = g(r,'block');
+    const siblingShops = allData.filter(x => g(x,'society')===soc && g(x,'block')===blk);
+    const siblingIdx   = siblingShops.findIndex(x => g(x,'shopcode')===g(r,'shopcode'));
+
+    function renderDetail(row) {
+      const fld = (k, icon='') => {
+        const val = g(row, k);
+        if (!val) return '';
+        return `<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border,#2a3045)">
+          <span style="min-width:170px;font-size:10px;color:var(--muted);padding-top:1px">${icon} ${COLS[k]||k}</span>
+          <span style="font-size:12px;color:var(--text);font-weight:500;flex:1">${val}</span>
+        </div>`;
+      };
+
+      const timeBadge = g(row,'timetype') === 'முழுநேரம்'
+        ? `<span style="background:#166534;color:#bbf7d0;padding:3px 10px;border-radius:12px;font-size:11px">முழுநேரம்</span>`
+        : `<span style="background:#78350f;color:#fef3c7;padding:3px 10px;border-radius:12px;font-size:11px">பகுதிநேரம்</span>`;
+      const posBadge = g(row,'pos') === 'உள்ளது'
+        ? `<span style="background:#1e3a5f;color:#93c5fd;padding:3px 10px;border-radius:12px;font-size:11px">PoS ✓</span>`
+        : `<span style="background:#2d1a1a;color:#fca5a5;padding:3px 10px;border-radius:12px;font-size:11px">PoS ✗</span>`;
+
+      const curIdx = siblingShops.findIndex(x => g(x,'shopcode')===g(row,'shopcode'));
+      const hasPrev = curIdx > 0, hasNext = curIdx < siblingShops.length-1;
+
+      document.getElementById('gsp-results').innerHTML = `
+        <div style="padding:14px 16px">
+
+          <!-- back + nav row -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <button onclick="gspBackToResults()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:inherit">
+              ← தேடலுக்கு திரும்பு
+            </button>
+            <div style="display:flex;gap:6px;align-items:center;font-size:10px;color:var(--muted)">
+              <button onclick="gspSiblingNav(-1)" ${hasPrev?'':'disabled'}
+                style="background:none;border:1px solid var(--border);color:${hasPrev?'var(--teal)':'var(--border)'};border-radius:6px;padding:3px 10px;font-size:11px;cursor:${hasPrev?'pointer':'default'};font-family:inherit">◀ முந்தைய</button>
+              <span>${curIdx+1} / ${siblingShops.length} (${soc})</span>
+              <button onclick="gspSiblingNav(1)" ${hasNext?'':'disabled'}
+                style="background:none;border:1px solid var(--border);color:${hasNext?'var(--teal)':'var(--border)'};border-radius:6px;padding:3px 10px;font-size:11px;cursor:${hasNext?'pointer':'default'};font-family:inherit">அடுத்தது ▶</button>
+            </div>
+          </div>
+
+          <!-- shop header -->
+          <div style="background:var(--bg3,#111827);border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid #4f8ef755">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="font-size:22px">🏪</span>
+              <div>
+                <div style="font-size:15px;font-weight:700;color:var(--text)">${g(row,'shopname')}</div>
+                <div style="font-size:11px;color:var(--teal);font-family:'DM Mono',monospace;margin-top:2px">${g(row,'shopcode')}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${timeBadge} ${posBadge}
+              <span style="background:#2a1a2e;color:#c4b5fd;padding:3px 10px;border-radius:12px;font-size:11px">🃏 ${g(row,'cards')} அட்டைகள்</span>
+              <span style="background:#1a2e2a;color:#5eead4;padding:3px 10px;border-radius:12px;font-size:11px">📅 ${g(row,'opendays')} நாட்கள்</span>
+            </div>
+          </div>
+
+          <!-- field grid in 2 sections -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+
+            <!-- Location section -->
+            <div style="background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border)">
+              <div style="font-size:10px;font-weight:700;color:#5eead4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">📍 இருப்பிட விவரம்</div>
+              ${fld('taluk','🗺️')}
+              ${fld('block','📍')}
+              ${fld('society','🏢')}
+              ${fld('mla','🗳️')}
+              ${fld('mp','🏛️')}
+              ${fld('area','🌆')}
+              ${fld('agency','')}
+              ${fld('godown','📦')}
+            </div>
+
+            <!-- Shop + Seller section -->
+            <div>
+              <div style="background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border);margin-bottom:10px">
+                <div style="font-size:10px;font-weight:700;color:#fcd34d;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🏪 கடை விவரம்</div>
+                ${fld('building','🏗️')}
+                ${fld('buildingname','')}
+                ${fld('pos','💳')}
+                ${fld('posother','')}
+                ${fld('timetype','⏱️')}
+                ${fld('opendays','📅')}
+                ${fld('remarks','📝')}
+              </div>
+              <div style="background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border)">
+                <div style="font-size:10px;font-weight:700;color:#c4b5fd;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">👤 விற்பனையாளர்</div>
+                ${fld('seller','👤')}
+                ${fld('phone','📱')}
+                ${fld('gender','')}
+                ${g(row,'haspacker')==='ஆம்' ? `
+                  <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+                  <div style="font-size:9px;color:var(--muted);margin-bottom:4px">கட்டுநர் விவரம்</div>
+                  ${fld('packername','📦')}${fld('packerphone','📱')}${fld('packergender','')}
+                  </div>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- action buttons -->
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            <button onclick="gspOpenInDataTab('${g(row,'shopcode')}')"
+              style="flex:1;background:#1e3a5f;border:1px solid #4f8ef7;color:#93c5fd;border-radius:8px;padding:8px;font-size:11px;cursor:pointer;font-family:inherit">
+              ✏️ திருத்தம் Tab-ல் திற
+            </button>
+            <button onclick="gspShowSocietyFromDetail('${soc}','${blk}')"
+              style="flex:1;background:#2d2000;border:1px solid #f5a623;color:#fcd34d;border-radius:8px;padding:8px;font-size:11px;cursor:pointer;font-family:inherit">
+              🏢 நிறுவன விவரம் காண
+            </button>
+          </div>
+        </div>`;
+
+      // store current row for sibling navigation
+      window._gspCurrentShopRow = row;
+    }
+
+    renderDetail(r);
+
+    // sibling navigation
+    window.gspSiblingNav = function(dir) {
+      const curRow = window._gspCurrentShopRow;
+      const curIdx = siblingShops.findIndex(x => g(x,'shopcode')===g(curRow,'shopcode'));
+      const nextIdx = curIdx + dir;
+      if (nextIdx >= 0 && nextIdx < siblingShops.length) renderDetail(siblingShops[nextIdx]);
+    };
+    window.gspBackToResults = function() {
+      document.getElementById('gsp-results').innerHTML = prevResultsHTML;
+      document.getElementById('gsp-tokens').innerHTML  = prevTokensHTML;
+      document.getElementById('gsp-input').value = prevInput;
+      // re-attach click handlers
+      document.querySelectorAll('#gsp-results .gsp-row').forEach(row => {
+        row.addEventListener('click', () => activateResult(parseInt(row.dataset.idx)));
+        row.addEventListener('mouseenter', () => setActiveIdx(parseInt(row.dataset.idx)));
+      });
+    };
+    window.gspOpenInDataTab = function(code) {
+      closePalette();
+      if (typeof switchView === 'function') switchView('data');
+      setTimeout(() => {
+        const inp = document.getElementById('search');
+        if (inp) { inp.value = code; if (typeof applyFilters === 'function') applyFilters(); }
+        setTimeout(() => {
+          document.querySelectorAll('#data-table-body tr').forEach(tr => {
+            if (tr.textContent.includes(code)) {
+              tr.scrollIntoView({ behavior:'smooth', block:'center' });
+              tr.style.outline = '2px solid #4f8ef7';
+              tr.style.borderRadius = '6px';
+              setTimeout(() => tr.style.outline = '', 2500);
+            }
+          });
+        }, 400);
+      }, 150);
+    };
+    window.gspShowSocietyFromDetail = function(soc, blk) {
+      const socRows = allData.filter(x => g(x,'society')===soc && g(x,'block')===blk);
+      showSocietyDetail(soc, socRows, blk);
+    };
+  }
+
+  // ── SOCIETY DETAIL PANEL ──────────────────────────────────────
+  function showSocietyDetail(society, rows, block) {
+    const prevResultsHTML = document.getElementById('gsp-results').innerHTML;
+    const prevInput = document.getElementById('gsp-input').value;
+
+    const totalCards = rows.reduce((s,r)=>s+(parseInt(g(r,'cards'))||0),0);
+    const fullTime   = rows.filter(r=>g(r,'timetype')==='முழுநேரம்').length;
+    const withPos    = rows.filter(r=>g(r,'pos')==='உள்ளது').length;
+
+    const shopRows = rows.map((r,i) => `
+      <tr onclick="gspOpenShopFromSociety(${i})" style="cursor:pointer"
+        onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+        <td style="padding:7px 10px;font-size:10px;color:var(--muted)">${i+1}</td>
+        <td style="padding:7px 10px;font-size:11px;color:var(--teal);font-family:'DM Mono',monospace">${g(r,'shopcode')}</td>
+        <td style="padding:7px 10px;font-size:12px;color:var(--text)">${g(r,'shopname')}</td>
+        <td style="padding:7px 10px;font-size:11px">
+          <span style="background:${g(r,'timetype')==='முழுநேரம்'?'#166534':'#78350f'};color:${g(r,'timetype')==='முழுநேரம்'?'#bbf7d0':'#fef3c7'};padding:2px 7px;border-radius:8px;font-size:10px">${g(r,'timetype')}</span>
+        </td>
+        <td style="padding:7px 10px;font-size:11px;color:${g(r,'pos')==='உள்ளது'?'#93c5fd':'#fca5a5'}">${g(r,'pos')==='உள்ளது'?'✓':'✗'}</td>
+        <td style="padding:7px 10px;font-size:11px;color:var(--muted)">${g(r,'cards')}</td>
+        <td style="padding:7px 10px;font-size:11px;color:var(--text)">${g(r,'seller')}</td>
+      </tr>`).join('');
+
+    document.getElementById('gsp-results').innerHTML = `
+      <div style="padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <button onclick="gspBackToResults()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:inherit">
+            ← தேடலுக்கு திரும்பு
+          </button>
+          <span style="font-size:10px;color:var(--muted)">${rows.length} கடைகள்</span>
+        </div>
+
+        <!-- Society header -->
+        <div style="background:var(--bg3);border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid #f5a62355">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:22px">🏢</span>
+            <div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)">${society}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${block||''} ஒன்றியம்</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border)">
+              <div style="font-size:18px;font-weight:700;color:#4f8ef7">${rows.length}</div>
+              <div style="font-size:9px;color:var(--muted)">கடைகள்</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border)">
+              <div style="font-size:18px;font-weight:700;color:#fcd34d">${totalCards.toLocaleString('en-IN')}</div>
+              <div style="font-size:9px;color:var(--muted)">அட்டைகள்</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border)">
+              <div style="font-size:18px;font-weight:700;color:#bbf7d0">${fullTime}</div>
+              <div style="font-size:9px;color:var(--muted)">முழுநேரம்</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border)">
+              <div style="font-size:18px;font-weight:700;color:#93c5fd">${withPos}</div>
+              <div style="font-size:9px;color:var(--muted)">PoS</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shop table -->
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px">👆 கடையின் மேல் க்ளிக் செய்தால் முழு விவரம் காணலாம்</div>
+        <div style="overflow:auto;max-height:320px;border-radius:10px;border:1px solid var(--border)">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:var(--bg3);position:sticky;top:0">
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--muted)">#</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--muted)">குறியீடு</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--muted)">கடை பெயர்</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--muted)">நேரம்</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--muted)">PoS</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--muted)">அட்டை</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--muted)">விற்பனையாளர்</th>
+              </tr>
+            </thead>
+            <tbody>${shopRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+
+    // Store rows for click-through
+    window._gspSocietyRows = rows;
+    window.gspOpenShopFromSociety = function(idx) {
+      showShopDetail(rows[idx]);
+    };
+    window.gspBackToResults = function() {
+      document.getElementById('gsp-results').innerHTML = prevResultsHTML;
+      document.getElementById('gsp-input').value = prevInput;
+      document.querySelectorAll('#gsp-results .gsp-row').forEach(row => {
+        row.addEventListener('click', () => activateResult(parseInt(row.dataset.idx)));
+        row.addEventListener('mouseenter', () => setActiveIdx(parseInt(row.dataset.idx)));
+      });
+    };
+  }
+
+  // ── keyboard navigation ──────────────────────────────────────
+  function setActiveIdx(idx) {
+    const rows = document.querySelectorAll('#gsp-results .gsp-row');
+    rows.forEach(r => r.classList.remove('gsp-active'));
+    activeIdx = idx;
+    if (idx >= 0 && idx < rows.length) {
+      rows[idx].classList.add('gsp-active');
+      rows[idx].scrollIntoView({ block:'nearest' });
+    }
+  }
+
+  document.getElementById('gsp-input').addEventListener('keydown', e => {
+    const rows = document.querySelectorAll('#gsp-results .gsp-row');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIdx(Math.min(activeIdx+1, rows.length-1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIdx(Math.max(activeIdx-1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIdx >= 0) activateResult(activeIdx);
+      else if (lastResults.length) activateResult(0);
+    } else if (e.key === 'Escape') {
+      closePalette();
+    } else if (e.key === 'Tab') {
+      // Tab: add currently highlighted result as filter chip if it's a field type
+      e.preventDefault();
+      if (activeIdx >= 0) {
+        const item = lastResults[activeIdx];
+        if (item?.type === 'filter') {
+          activeFilters[item.field] = item.value;
+          document.getElementById('gsp-input').value = '';
+          renderTokens();
+          triggerSearch('');
+        }
+      }
+    } else if (e.key === 'Backspace' && !e.target.value) {
+      // remove last chip
+      const keys = Object.keys(activeFilters);
+      if (keys.length) {
+        delete activeFilters[keys[keys.length-1]];
+        renderTokens();
+        triggerSearch('');
+      }
+    }
+  });
+
+  // ── input handler ────────────────────────────────────────────
+  let debounceTimer;
+  document.getElementById('gsp-input').addEventListener('input', e => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => triggerSearch(e.target.value), 120);
+  });
+
+  function triggerSearch(raw) {
+    const groups = search(raw);
+    renderResults(groups);
+  }
+
+  // ── open / close ─────────────────────────────────────────────
+  function openPalette() {
+    overlay.classList.add('open');
+    document.getElementById('gsp-input').value = '';
+    activeFilters = {};
+    renderTokens();
+    setTimeout(() => {
+      document.getElementById('gsp-input').focus();
+      triggerSearch('');
+    }, 60);
+  }
+
+  function closePalette() {
+    overlay.classList.remove('open');
+    activeIdx = -1;
+  }
+
+  // global Ctrl+K / Cmd+K
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      overlay.classList.contains('open') ? closePalette() : openPalette();
+    }
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closePalette();
+  });
+
+  // expose for token remove button
+  window.gspRemoveFilter = function(key) {
+    delete activeFilters[key];
+    renderTokens();
+    triggerSearch(document.getElementById('gsp-input')?.value || '');
+  };
+
+})();
 </script>
 </body>
 </html>
